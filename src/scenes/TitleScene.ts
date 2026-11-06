@@ -3,7 +3,7 @@ import { GAME_W, GAME_H, COLORS, FONT, inkHex } from '../lib/layout';
 import { bigButton, title } from '../lib/ui';
 import { say, sayHover } from '../lib/voice';
 import { save, persist } from '../lib/state';
-import { listSlots, loadSlot, SLOT_COUNT, type SaveData } from '../lib/save';
+import { listSlots, loadSlot, deleteSlot, SLOT_COUNT, type SaveData } from '../lib/save';
 import { unlockAudio, setMusic, sfx } from '../lib/sound';
 import { stars } from '../lib/plural';
 import { auntieIns, auntieVoc } from '../lib/names';
@@ -96,6 +96,7 @@ export class TitleScene extends Phaser.Scene {
       const x = GAME_W / 2 + (i - 1) * 440;
       const card = this.slotCard(x, 450, i, data, mode);
       this.ui.add(card);
+      if (data) this.ui.add(this.deleteButton(x, 450 + 260, i, mode));
     }
     say(mode === 'new' ? 'Wybierz miejsce na nową grę.' : 'Wybierz grę.');
   }
@@ -146,6 +147,44 @@ export class TitleScene extends Phaser.Scene {
       }
       loadSlot(i, save, true);
       this.showSetup();
+    });
+    return c;
+  }
+
+  /** Trash button under a saved game. Needs a second click to really delete. */
+  private deleteButton(x: number, y: number, i: number, mode: 'new' | 'load') {
+    const bg = this.add.graphics();
+    const label = this.add.text(0, 0, '🗑️ Usuń', { fontFamily: FONT, fontSize: '32px', fontStyle: '800', color: inkHex }).setOrigin(0.5);
+    const draw = (danger: boolean) => {
+      bg.clear();
+      bg.fillStyle(danger ? 0xff5d5d : 0xffffff, 1).fillRoundedRect(-120, -34, 240, 68, 34);
+      bg.lineStyle(4, danger ? 0xffffff : 0x4a3a5c, danger ? 1 : 0.25).strokeRoundedRect(-120, -34, 240, 68, 34);
+      label.setText(danger ? 'Na pewno?' : '🗑️ Usuń').setColor(danger ? '#ffffff' : inkHex);
+    };
+    draw(false);
+    const c = this.add.container(x, y, [bg, label]).setSize(240, 68).setInteractive({ useHandCursor: true });
+    let armed = false;
+    let timer: Phaser.Time.TimerEvent | null = null;
+    c.on('pointerover', () => sayHover(armed ? 'Kliknij jeszcze raz, żeby usunąć.' : `Usuń grę ${i + 1}`));
+    c.on('pointerdown', () => {
+      if (!armed) {
+        armed = true;
+        draw(true);
+        sfx.wrong();
+        say(`Czy na pewno usunąć grę ${i + 1}? Kliknij jeszcze raz.`);
+        // Change of mind: the button calms down again after a few seconds
+        timer = this.time.delayedCall(4000, () => {
+          armed = false;
+          draw(false);
+        });
+        return;
+      }
+      timer?.remove();
+      deleteSlot(i);
+      sfx.whoosh();
+      say(`Gra ${i + 1} usunięta.`);
+      if (mode === 'load' && !listSlots().some(Boolean)) this.showMain();
+      else this.showSlots(mode);
     });
     return c;
   }
