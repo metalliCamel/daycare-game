@@ -5,7 +5,7 @@ import { KIDS, type Kid } from '../objects/Kid';
 import { roomX, roomIndexAt } from '../lib/rooms';
 import { FONT, inkHex } from '../lib/layout';
 import { state, save, addStars, prompt, persist } from '../lib/state';
-import { say } from '../lib/voice';
+import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
 
 type Visit = { parent: Walker; kid: Kid; slot: number; mode: 'dropoff' | 'pickup' | 'sick' };
@@ -112,7 +112,7 @@ export class Cloakroom implements Module {
     parent.input!.cursor = 'pointer';
     const v: Visit = { parent, kid, slot, mode };
     parent.on('pointerdown', () => w.goThen(parent.x + 150, parent.y, () => this.clickParent(v)));
-    parent.on('pointerover', () => say(kid.def.parentLabel));
+    parent.on('pointerover', () => sayHover(kid.def.parentLabel));
     this.visits.push(v);
     sfx.doorbell();
     parent.walkTo(x, 760);

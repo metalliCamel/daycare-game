@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { Overlay } from './Overlay';
 import { PICTURES, PALETTE, fillRegion, regionContains, encodeDrawing } from '../world/pictures';
 import { prompt } from '../lib/state';
-import { say } from '../lib/voice';
+import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
 
 const COLOR_NAMES = ['czerwony', 'pomarańczowy', 'żółty', 'zielony', 'niebieski', 'fioletowy', 'różowy', 'brązowy', 'biały'];
@@ -62,7 +62,7 @@ export class CraftScene extends Overlay {
       const y = 200 + Math.floor(i / 2) * 120;
       const sw = this.add.circle(x, y, 48, c).setStrokeStyle(6, 0x4a3a5c, 0.25).setInteractive({ useHandCursor: true });
       sw.on('pointerdown', () => this.pick(i));
-      sw.on('pointerover', () => say(COLOR_NAMES[i]));
+      sw.on('pointerover', () => sayHover(COLOR_NAMES[i]));
       this.swatches.push(sw);
     });
     this.pick(0);

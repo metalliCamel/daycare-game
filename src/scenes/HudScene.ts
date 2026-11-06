@@ -3,7 +3,7 @@ import { GAME_W, GAME_H, FONT, inkHex } from '../lib/layout';
 import { ROOMS } from '../lib/rooms';
 import { bus, state, save, persist } from '../lib/state';
 import { setMusic, isMusicOn, playDayMusic, sfx } from '../lib/sound';
-import { say } from '../lib/voice';
+import { say, sayHover } from '../lib/voice';
 
 function clockText(min: number) {
   const h = Math.floor(min / 60);
@@ -41,7 +41,7 @@ export class HudScene extends Phaser.Scene {
       g.fillStyle(0xffffff, 0.92).fillCircle(x, 65, 45);
       const t = this.add.text(x, 65, label, { fontSize: '46px' }).setOrigin(0.5);
       const z = this.add.zone(x, 65, 90, 90).setInteractive({ useHandCursor: true });
-      z.on('pointerover', () => say(speak));
+      z.on('pointerover', () => sayHover(speak));
       z.on('pointerdown', () => {
         sfx.click();
         onClick();
@@ -100,7 +100,7 @@ export class HudScene extends Phaser.Scene {
       this.tweens.add({ targets: dot, scale: 1.3, duration: 500, yoyo: true, repeat: -1 });
       const hit = this.add.zone(x + size / 2, my + size / 2, size, size).setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => bus.emit('goto', i));
-      hit.on('pointerover', () => say(room.speak));
+      hit.on('pointerover', () => sayHover(room.speak));
       this.mapButtons.push({ bg: b, dot, x });
       this.map.add([b, icon, dot, hit]);
     });

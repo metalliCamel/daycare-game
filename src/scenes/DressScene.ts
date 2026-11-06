@@ -3,7 +3,7 @@ import { Overlay } from './Overlay';
 import { FONT, inkHex } from '../lib/layout';
 import { kidDef } from '../objects/Kid';
 import { addStars, prompt } from '../lib/state';
-import { say } from '../lib/voice';
+import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
 import { WEATHER, type Weather } from '../world/outside';
 import type { EmojiKey } from '../lib/assets';
@@ -62,7 +62,7 @@ export class DressScene extends Overlay {
       const img = this.add.image(x, y, c.key).setDisplaySize(105, 105).setInteractive({ useHandCursor: true, draggable: true });
       img.setData('home', { x, y }).setData('key', c.key);
       this.input.setDraggable(img);
-      img.on('pointerover', () => say(c.name));
+      img.on('pointerover', () => sayHover(c.name));
       img.on('drag', (_p: Phaser.Input.Pointer, dx: number, dy: number) => img.setPosition(dx, dy));
       img.on('dragend', () => this.dropItem(img, c.name));
       this.items.push(img);

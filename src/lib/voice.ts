@@ -27,3 +27,16 @@ export function say(text: string) {
   u.pitch = 1.1;
   window.speechSynthesis.speak(u);
 }
+
+// Hover speech is easy to trigger over and over, so the same line
+// isn't repeated within a few seconds.
+let lastHover = '';
+let lastHoverAt = 0;
+
+export function sayHover(text: string, quietMs = 8000) {
+  const now = performance.now();
+  if (text === lastHover && now - lastHoverAt < quietMs) return;
+  lastHover = text;
+  lastHoverAt = now;
+  say(text);
+}

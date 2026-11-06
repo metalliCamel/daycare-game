@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { FONT, COLORS, inkHex } from './layout';
-import { say } from './voice';
+import { say, sayHover } from './voice';
 
 /** Big, friendly button. Speaks its label on hover so a young reader can explore. */
 export function bigButton(
@@ -30,7 +30,7 @@ export function bigButton(
 
   c.on('pointerover', () => {
     scene.tweens.add({ targets: c, scale: 1.08, duration: 150, ease: 'Back.out' });
-    say(opts.speak ?? label);
+    sayHover(opts.speak ?? label);
   });
   c.on('pointerout', () => scene.tweens.add({ targets: c, scale: 1, duration: 150 }));
   c.on('pointerdown', () => {

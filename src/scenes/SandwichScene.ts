@@ -3,7 +3,7 @@ import { Overlay } from './Overlay';
 import { GAME_W, GAME_H, FONT, inkHex } from '../lib/layout';
 import { kidDef } from '../objects/Kid';
 import { addStars, prompt } from '../lib/state';
-import { say } from '../lib/voice';
+import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
 import type { EmojiKey } from '../lib/assets';
 import type { Order } from '../world/meals';
@@ -152,7 +152,7 @@ export class SandwichScene extends Overlay {
       bowl.fillStyle(0x9fd3f5, 1).fillRoundedRect(-70, 20, 140, 48, { tl: 0, tr: 0, bl: 38, br: 38 });
       const icon = this.add.image(0, -15, it.key).setDisplaySize(100, 100);
       const c = this.add.container(x, y, [bowl, icon]).setSize(150, 160).setInteractive({ useHandCursor: true });
-      c.on('pointerover', () => say(it.name));
+      c.on('pointerover', () => sayHover(it.name));
       c.on('pointerdown', (p: Phaser.Input.Pointer) => this.grab(it.key, p));
       this.bowls.set(it.key, c);
     });

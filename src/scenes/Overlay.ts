@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, FONT, inkHex } from '../lib/layout';
 import { bus } from '../lib/state';
-import { say } from '../lib/voice';
+import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
 
 /**
@@ -23,7 +23,7 @@ export class Overlay extends Phaser.Scene {
   protected closeButton(result: unknown = null) {
     const b = this.add.text(GAME_W - 80, 190, '✖', { fontSize: '56px', color: inkHex }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     b.on('pointerdown', () => this.close(result));
-    b.on('pointerover', () => say('Zamknij'));
+    b.on('pointerover', () => sayHover('Zamknij'));
     return b;
   }
 
@@ -49,7 +49,7 @@ export class Overlay extends Phaser.Scene {
     const c = this.add.container(x, y, [g, img, t]).setSize(size, size + 50).setInteractive({ useHandCursor: true });
     c.on('pointerover', () => {
       this.tweens.add({ targets: c, scale: 1.06, duration: 120 });
-      say(label);
+      sayHover(label);
     });
     c.on('pointerout', () => this.tweens.add({ targets: c, scale: 1, duration: 120 }));
     c.on('pointerdown', () => {

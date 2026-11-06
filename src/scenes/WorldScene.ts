@@ -4,7 +4,7 @@ import { ROOM_W, WORLD_W, roomX, roomIndexAt, FLOOR_MIN_Y } from '../lib/rooms';
 import { Walker } from '../objects/Walker';
 import { Kid, KIDS } from '../objects/Kid';
 import { bus, state, save, prompt, type Phase } from '../lib/state';
-import { say } from '../lib/voice';
+import { say, sayHover } from '../lib/voice';
 import { sfx, playDayMusic } from '../lib/sound';
 import type { EmojiKey } from '../lib/assets';
 import { Bathroom } from '../world/bathroom';
@@ -87,7 +87,9 @@ export class WorldScene extends Phaser.Scene {
       const kid = new Kid(this, -500, 700, def);
       kid.setPresent(false);
       kid.on('pointerdown', () => this.clickKid(kid));
-      kid.on('pointerover', () => say(kid.needText()));
+      kid.on('pointerover', () => {
+        if (kid.need) sayHover(kid.needText());
+      });
       this.kids.push(kid);
     });
 
@@ -170,7 +172,7 @@ export class WorldScene extends Phaser.Scene {
     obj.on('pointerdown', onClick);
     obj.on('pointerover', () => {
       if (obj instanceof Phaser.GameObjects.Image) obj.setTint(0xfff0b0);
-      if (hover) say(hover);
+      if (hover) sayHover(hover);
     });
     obj.on('pointerout', () => {
       if (obj instanceof Phaser.GameObjects.Image) obj.clearTint();

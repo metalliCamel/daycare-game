@@ -4,7 +4,7 @@ import type { Kid } from '../objects/Kid';
 import { roomX } from '../lib/rooms';
 import { prop } from './draw';
 import { addStars, prompt } from '../lib/state';
-import { say } from '../lib/voice';
+import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
 
 type Toilet = {
@@ -92,7 +92,7 @@ export class Bathroom implements Module {
     const icon = w.add.image(0, -4, 'drop').setDisplaySize(64, 64);
     const btn = w.add.container(t.img.x, t.img.y - 250, [bg, icon]).setDepth(3000).setSize(130, 130);
     btn.setInteractive({ useHandCursor: true });
-    btn.on('pointerover', () => say('Spłucz wodę'));
+    btn.on('pointerover', () => sayHover('Spłucz wodę'));
     btn.on('pointerdown', () => w.goThen(t.img.x + 130, 700, () => this.flush(t)));
     w.tweens.add({ targets: btn, scale: 1.12, duration: 450, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     t.ui = btn;
