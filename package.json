@@ -1,0 +1,27 @@
+{
+  "name": "daycare-game",
+  "version": "1.0.0",
+  "description": "Gra dla Hani: zostań panią w przedszkolu",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metalliCamel/daycare-game.git"
+  },
+  "bugs": {
+    "url": "https://github.com/metalliCamel/daycare-game/issues"
+  },
+  "homepage": "https://github.com/metalliCamel/daycare-game#readme",
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.6"
+  },
+  "private": true,
+  "type": "module"
+}
