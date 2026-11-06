@@ -7,6 +7,7 @@ import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
 import type { EmojiKey } from '../lib/assets';
 import type { Order } from '../world/meals';
+import { cutSequence } from './cutting';
 
 const INGREDIENTS: { key: EmojiKey; name: string; acc: string }[] = [
   { key: 'bread', name: 'chleb', acc: 'chleb' },
@@ -34,8 +35,6 @@ export class SandwichScene extends Overlay {
   private bowls = new Map<EmojiKey, Phaser.GameObjects.Container>();
   private hintTimer?: Phaser.Time.TimerEvent;
   private done: Phaser.GameObjects.Image[] = [];
-  private cutQueue: EmojiKey[] = [];
-  private cutLayer?: Phaser.GameObjects.Container;
 
   constructor() {
     super('Sandwich');
@@ -58,7 +57,6 @@ export class SandwichScene extends Overlay {
     g.fillStyle(0xe8d8b8, 1).fillRect(0, 300, GAME_W, GAME_H - 300);
     g.fillStyle(0xd8c49c, 1);
     for (let x = 0; x < GAME_W; x += 160) g.fillRect(x, 300, 4, GAME_H);
-    g.fillStyle(0xc68c5c, 1).fillRoundedRect(PLATE_X - 230, PLATE_Y - 90, 460, 210, 40);
 
     // Finished sandwiches go onto the tray on the right
     g.fillStyle(0xb5835a, 1).fillRoundedRect(1180, 300, 380, 260, 30);
@@ -66,81 +64,14 @@ export class SandwichScene extends Overlay {
     this.closeButton(false);
 
     const needed = new Set(this.orders.flatMap((o) => o.fillings));
-    this.cutQueue = CUTTABLE.filter((k) => needed.has(k));
-    if (this.cutQueue.length) this.nextCut();
-    else this.startBuilding();
-  }
-
-  // ---------- Cutting ----------
-
-  private nextCut() {
-    this.cutLayer?.destroy();
-    const key = this.cutQueue.shift();
-    if (!key) return this.startBuilding();
-    const c = this.add.container(PLATE_X, PLATE_Y);
-    this.cutLayer = c;
-    const veg = this.add.image(0, 0, key).setDisplaySize(330, 330);
-    c.add(veg);
-    const lines = [-75, 0, 75].map((dx) => {
-      const l = this.add.graphics();
-      l.lineStyle(6, 0x4a3a5c, 0.7);
-      for (let y = -130; y < 130; y += 26) l.lineBetween(dx, y, dx, y + 13);
-      c.add(l);
-      return { dx, cut: false, g: l };
-    });
-    const knife = this.add.image(0, 0, 'knife').setDisplaySize(150, 150).setVisible(false).setDepth(200);
-    prompt(`Pokrój ${ing(key).acc}! Przytrzymaj przycisk i przeciągnij nożem w dół po kreskach.`);
-
-    let lastX: number | null = null;
-    const onMove = (p: Phaser.Input.Pointer) => {
-      knife.setPosition(p.x + 40, p.y - 40).setVisible(true);
-      if (!p.isDown) {
-        lastX = null;
-        return;
-      }
-      const lx = p.x - PLATE_X;
-      const ly = p.y - PLATE_Y;
-      if (Math.abs(ly) < 170) {
-        for (const line of lines) {
-          // A cut counts when the knife passes over the line (or moves along it)
-          const crossed = lastX !== null && (lastX - line.dx) * (lx - line.dx) <= 0;
-          const along = Math.abs(lx - line.dx) < 22 && p.velocity.y > 2;
-          if (!line.cut && (crossed || along)) {
-            line.cut = true;
-            sfx.chop();
-            line.g.clear();
-            line.g.fillStyle(0xc68c5c, 1).fillRect(line.dx - 5, -170, 10, 340);
-            this.tweens.add({ targets: c, x: PLATE_X + Phaser.Math.Between(-6, 6), duration: 50, yoyo: true });
-          }
-        }
-      }
-      lastX = lx;
-      if (lines.every((l) => l.cut)) {
-        this.input.off('pointermove', onMove);
-        knife.destroy();
-        this.slices(key, c);
-      }
-    };
-    this.input.on('pointermove', onMove);
-  }
-
-  private slices(key: EmojiKey, c: Phaser.GameObjects.Container) {
-    c.removeAll(true);
-    addStars();
-    say({ tomato: 'Pomidor pokrojony!', cucumber: 'Ogórek pokrojony!', egg: 'Jajko pokrojone!' }[key as string] ?? 'Pokrojone!');
-    for (let i = 0; i < 4; i++) {
-      const s = this.add.image(0, 0, key).setDisplaySize(170, 170).setScale(0.3, 0.6).setAngle(-10);
-      c.add(s);
-      this.tweens.add({ targets: s, x: -150 + i * 100, duration: 400, ease: 'Back.out' });
-    }
-    this.time.delayedCall(1300, () => this.nextCut());
+    cutSequence(this, CUTTABLE.filter((k) => needed.has(k)), PLATE_X, PLATE_Y, () => this.startBuilding());
   }
 
   // ---------- Building ----------
 
   private startBuilding() {
-    this.cutLayer?.destroy();
     const g = this.add.graphics();
+    g.fillStyle(0xc68c5c, 1).fillRoundedRect(PLATE_X - 230, PLATE_Y - 90, 460, 210, 40);
     g.fillStyle(0xffffff, 1).fillEllipse(PLATE_X, PLATE_Y + 20, 320, 120);
     g.lineStyle(6, 0xe0e0e0, 1).strokeEllipse(PLATE_X, PLATE_Y + 20, 250, 80);
 

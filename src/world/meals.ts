@@ -7,6 +7,9 @@ import { state, addStars, prompt } from '../lib/state';
 import { say } from '../lib/voice';
 import { sfx } from '../lib/sound';
 import type { EmojiKey } from '../lib/assets';
+import { dishFor, DISHES, type Dish } from './menu';
+import { sayHover } from '../lib/voice';
+import { save } from '../lib/state';
 
 export type Order = { kidId: string; fillings: EmojiKey[] };
 export type Drink = { key: EmojiKey; name: string; color: number };
@@ -25,14 +28,17 @@ export class Meals implements Module {
   private drink: Drink = DRINKS['Śniadanie'];
   private seated: Kid[] = [];
   private arrived = 0;
+  private dish: Dish = DISHES.kanapki;
+  private station!: Phaser.GameObjects.Image;
 
   constructor(private w: WorldScene) {
     const k = roomX('kuchnia');
-    const bread = prop(w, 'bread', k + 420, 470, 120, 615);
-    prop(w, 'cheese', k + 560, 470, 90, 615);
-    prop(w, 'knife', k + 680, 470, 80, 615);
+    // The counter shows what's cooking today; click it to start cooking
+    this.station = prop(w, 'bread', k + 420, 470, 120, 615);
+    prop(w, 'knife', k + 560, 470, 80, 615);
     prop(w, 'pan', k + 900, 470, 120, 615);
-    w.clickable(bread, () => w.goThen(k + 520, 700, () => this.openKitchen('Sandwich')), 'Robimy kanapki');
+    w.clickable(this.station, () => w.goThen(k + 520, 700, () => this.openKitchen('Food')));
+    this.station.on('pointerover', () => sayHover(state.phase === 'meal' ? `Gotujemy: ${this.dish.name}` : 'Blat kuchenny'));
     const pot = prop(w, 'teapot', k + 1185, 480, 120, 615);
     w.clickable(pot, () => w.goThen(k + 1185, 700, () => this.openKitchen('Pour')), 'Nalewamy picie');
 
@@ -47,13 +53,15 @@ export class Meals implements Module {
     w.setPhase('meal');
     state.meal = { step: 'cooking', name, sandwiches: false, drinks: false };
     this.drink = DRINKS[name] ?? DRINKS['Śniadanie'];
+    this.dish = dishFor(name, save.day);
+    this.station.setTexture(this.dish.icon).setDisplaySize(120, 120);
     this.seated = w.presentKids;
     this.orders = this.seated.map((kid) => ({
       kidId: kid.def.id,
       fillings: Phaser.Utils.Array.Shuffle([...kid.def.likes]).slice(0, 2) as EmojiKey[],
     }));
     sfx.doorbell();
-    prompt(`Czas na ${name.toLowerCase()}! Dzieci idą do jadalni. Zrób kanapki i nalej ${this.drink.name} w kuchni.`);
+    prompt(`Czas na ${name.toLowerCase()}! Dzisiaj ${this.dish.name}. Dzieci idą do jadalni. Przygotuj ${this.dish.acc} na blacie w kuchni i nalej ${this.drink.name}.`);
     this.arrived = 0;
     this.seated.forEach((kid, i) => {
       kid.setNeed('hungry');
@@ -62,31 +70,40 @@ export class Meals implements Module {
     });
   }
 
-  private openKitchen(which: 'Sandwich' | 'Pour') {
+  private openKitchen(which: 'Food' | 'Pour') {
     const m = state.meal;
     if (state.phase !== 'meal' || m.step !== 'cooking') {
       prompt(state.phase === 'meal' ? 'Jedzenie jest już gotowe!' : 'Teraz nie jest pora jedzenia. Pobaw się z dziećmi!');
       return;
     }
-    if (which === 'Sandwich' && m.sandwiches) return prompt(`Kanapki są gotowe! Teraz nalej ${this.drink.name} przy dzbanku.`);
-    if (which === 'Pour' && m.drinks) return prompt('Picie jest gotowe! Teraz kanapki na blacie.');
-    const data = which === 'Sandwich' ? { orders: this.orders } : { kids: this.seated.map((k) => k.def.id), drink: this.drink };
-    this.w.openScene<boolean>(which, data, (done) => done && this.cooked(which));
+    if (which === 'Food' && m.sandwiches) return prompt(`Jedzenie jest gotowe! Teraz nalej ${this.drink.name} przy dzbanku.`);
+    if (which === 'Pour' && m.drinks) return prompt(`Picie jest gotowe! Teraz ${this.dish.name} na blacie.`);
+    const kids = this.seated.map((k) => k.def.id);
+    if (which === 'Pour') {
+      this.w.openScene<boolean>('Pour', { kids, drink: this.drink }, (done) => done && this.cooked('Pour'));
+      return;
+    }
+    const d = this.dish;
+    const [key, data] =
+      d.kind === 'sandwich' ? ['Sandwich', { orders: this.orders }]
+      : d.kind === 'pot' ? ['Pot', { dish: d, kids }]
+      : ['Top', { dish: d, orders: kids.map((kidId) => ({ kidId, toppings: Phaser.Utils.Array.Shuffle([...d.toppings]).slice(0, 2) })) }];
+    this.w.openScene<boolean>(key, data, (done) => done && this.cooked('Food'));
   }
 
-  private cooked(which: 'Sandwich' | 'Pour') {
+  private cooked(which: 'Food' | 'Pour') {
     const w = this.w;
     const m = state.meal;
-    if (which === 'Sandwich') m.sandwiches = true;
+    if (which === 'Food') m.sandwiches = true;
     if (which === 'Pour') m.drinks = true;
     if (!(m.sandwiches && m.drinks)) {
-      prompt(which === 'Sandwich' ? `Super kanapki! Teraz nalej ${this.drink.name} przy dzbanku.` : 'Picie gotowe! Teraz zrób kanapki na blacie.');
+      prompt(which === 'Food' ? `Super! Teraz nalej ${this.drink.name} przy dzbanku.` : `Picie gotowe! Teraz przygotuj ${this.dish.acc} na blacie.`);
       return;
     }
     m.step = 'serving';
     const k = roomX('kuchnia');
     const tray = prop(w, 'plate', k + 620, 470, 130, 616);
-    tray.setData('topping', w.add.image(0, 0, 'sandwich').setDisplaySize(80, 80));
+    tray.setData('topping', w.add.image(0, 0, this.dish.icon).setDisplaySize(80, 80));
     const item: Item = { id: 'tray', img: tray, home: { x: tray.x, y: tray.y } };
     w.items.push(item);
     w.clickable(tray, () => {
@@ -119,11 +136,11 @@ export class Meals implements Module {
   private serve() {
     const w = this.w;
     state.meal.step = 'eating';
-    prompt('Smacznego!');
+    prompt(`Smacznego! Dzisiaj ${this.dish.name}.`);
     const plates: Phaser.GameObjects.Image[] = [];
     this.seated.forEach((_, i) => {
       const seat = this.seats[i];
-      const plate = w.add.image(seat.x - 20, 572, 'sandwich').setDisplaySize(75, 75).setDepth(660).setScale(0);
+      const plate = w.add.image(seat.x - 20, 572, this.dish.icon).setDisplaySize(75, 75).setDepth(660).setScale(0);
       const cup = w.add.image(seat.x + 45, 562, this.drink.key).setDisplaySize(50, 50).setDepth(660);
       w.tweens.add({ targets: plate, scale: 75 / 256, duration: 300, delay: i * 120, ease: 'Back.out' });
       plates.push(plate, cup);

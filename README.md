@@ -24,12 +24,14 @@ Hania is the teacher. Click the floor (or use the arrow keys) to walk through th
 |---|---|---|
 | 7:30 | Parents bring the kids: greet them, check temperature, hang coats on each child's hook. A child with a fever goes home with the parent. | Szatnia |
 | free time | Random needs: toilet → flush → wash hands, sad child → bring the teddy, toy fights → choose how to solve it, a child feeling unwell → thermometer → call the parent. Craft table: color a picture, it hangs on the wall. | everywhere |
-| 9:00 | Śniadanie: cut vegetables, build each child's sandwich from their order card, pour milk, carry the tray, wipe the crumbs. | Kuchnia, Jadalnia |
+| 9:00 | Śniadanie: sandwiches (cut + build from order cards) or porridge (each child's two favourite toppings), pour milk, carry the tray, wipe the crumbs. | Kuchnia, Jadalnia |
 | 10:00 | Going out: dress kids for the weather (sun / rain / cold), then swings (push at the green ring), slide, sandbox castle, and a head count before going back in. | Szatnia, Plac zabaw |
-| 12:00 | Obiad (water to drink). | Kuchnia, Jadalnia |
+| 12:00 | Obiad: tomato or vegetable soup — cut, put the right ingredients in the pot, stir, ladle into bowls. Water to drink. | Kuchnia, Jadalnia |
 | 13:00 | Nap: tuck everyone in, switch off the light, play the lullaby, pat kids who wake up. | Sypialnia |
-| 14:30 | Podwieczorek (juice). | Kuchnia, Jadalnia |
+| 14:30 | Podwieczorek: cupcakes to decorate or a fruit salad. Juice to drink. | Kuchnia, Jadalnia |
 | 15:30 | Parents come back: coat on at the hook, hand each child to the right parent. Then the day summary and the next day. | Szatnia |
+
+Dishes alternate day by day (see `src/world/menu.ts`).
 
 **Stars** are earned for everything and spent in the shop (🛍️) on decorations that appear in the rooms. Progress (stars, day, decorations, drawings, chosen teacher, music on/off) is saved in the browser.
 

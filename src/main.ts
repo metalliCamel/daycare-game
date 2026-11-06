@@ -12,6 +12,9 @@ import { ChoiceScene } from './scenes/ChoiceScene';
 import { CraftScene } from './scenes/CraftScene';
 import { ShopScene } from './scenes/ShopScene';
 import { SummaryScene } from './scenes/SummaryScene';
+import { PotScene } from './scenes/PotScene';
+import { TopScene } from './scenes/TopScene';
+import { save, state } from './lib/state';
 
 const start = () => {
   const game = new Phaser.Game({
@@ -27,12 +30,12 @@ const start = () => {
     // Order = draw order. The HUD is last so prompts show above the minigames.
     scene: [
       BootScene, TitleScene, WorldScene,
-      SandwichScene, PourScene, HealthScene, DressScene, ChoiceScene, CraftScene, ShopScene, SummaryScene,
+      SandwichScene, PotScene, TopScene, PourScene, HealthScene, DressScene, ChoiceScene, CraftScene, ShopScene, SummaryScene,
       HudScene,
     ],
   });
   // Handy for debugging from the browser console.
-  (window as unknown as { game: Phaser.Game }).game = game;
+  Object.assign(window as object, { game, save, state });
 };
 
 // Wait for the rounded font so Phaser text doesn't render in a fallback face.
