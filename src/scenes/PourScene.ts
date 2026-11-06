@@ -140,22 +140,33 @@ export class PourScene extends Overlay {
     this.stream.setVisible(false);
     this.fill = 1;
     this.drawFill(this.cup, 1);
-    prompt('Ojej, wylało się! Pocieraj gąbką kałużę, żeby ją wytrzeć.');
+    prompt('Ojej, wylało się! Masz gąbkę. Jeździj nią po kałuży, żeby wytrzeć.');
 
     const x = this.cupX[this.cup];
     sfx.splash();
-    const puddle = this.add.ellipse(x + 40, CUP_Y + 15, 260, 50, this.drink.color, 0.95).setStrokeStyle(3, 0xd8c8a8).setDepth(5);
-    const sponge = this.add.image(x + 230, CUP_Y - 60, 'sponge').setDisplaySize(130, 130).setDepth(20).setInteractive({ useHandCursor: true, draggable: true });
-    this.input.setDraggable(sponge);
+    const puddle = this.add.ellipse(x + 20, CUP_Y + 15, 260, 50, this.drink.color, 0.95).setStrokeStyle(3, 0xd8c8a8).setDepth(5);
+    this.tweens.add({ targets: puddle, scaleX: 1.08, duration: 500, yoyo: true, repeat: -1 });
+
+    // The sponge follows the mouse — no clicking or dragging needed
+    const p0 = this.input.activePointer;
+    const sponge = this.add.image(p0.x, p0.y, 'sponge').setDisplaySize(130, 130).setDepth(20);
+    this.input.setDefaultCursor('none');
     let dirt = 1;
-    let lastX = sponge.x;
-    sponge.on('drag', (_p: Phaser.Input.Pointer, dx: number, dy: number) => {
-      sponge.setPosition(dx, dy);
-      const over = Phaser.Math.Distance.Between(dx, dy, puddle.x, puddle.y) < 170;
+    let last = { x: p0.x, y: p0.y };
+    let wipeSfx = 0;
+    const onMove = (p: Phaser.Input.Pointer) => {
+      sponge.setPosition(p.x, p.y);
+      const over = Math.abs(p.x - puddle.x) < 170 && Math.abs(p.y - puddle.y) < 90;
       if (over) {
-        dirt -= Math.abs(dx - lastX) / 1400;
-        puddle.setAlpha(Math.max(dirt, 0));
+        dirt -= Phaser.Math.Distance.Between(p.x, p.y, last.x, last.y) / 1600;
+        puddle.setAlpha(Math.max(dirt, 0.05));
+        if (performance.now() - wipeSfx > 180) {
+          wipeSfx = performance.now();
+          sfx.wipe();
+        }
         if (dirt <= 0) {
+          this.input.off('pointermove', onMove);
+          this.input.setDefaultCursor('default');
           puddle.destroy();
           sponge.destroy();
           addStars();
@@ -164,8 +175,10 @@ export class PourScene extends Overlay {
           this.nextCup();
         }
       }
-      lastX = dx;
-    });
+      last = { x: p.x, y: p.y };
+    };
+    this.input.on('pointermove', onMove);
+    this.events.once('shutdown', () => this.input.setDefaultCursor('default'));
   }
 
   private nextCup() {
