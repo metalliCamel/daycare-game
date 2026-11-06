@@ -5,8 +5,10 @@ import { Walker } from '../objects/Walker';
 import { Kid, KIDS } from '../objects/Kid';
 import { bus, state, save, prompt, type Phase } from '../lib/state';
 import { say, sayHover } from '../lib/voice';
-import { sfx, playDayMusic } from '../lib/sound';
+import { sfx, playDayMusic, stopMusic } from '../lib/sound';
 import type { EmojiKey } from '../lib/assets';
+import { auntie } from '../lib/names';
+import { FONT, inkHex } from '../lib/layout';
 import { Bathroom } from '../world/bathroom';
 import { Playroom } from '../world/playroom';
 import { Meals } from '../world/meals';
@@ -78,6 +80,9 @@ export class WorldScene extends Phaser.Scene {
     const s = roomX('szatnia');
     this.teacher = new Walker(this, s + 700, 760, save.teacher, 210, 540);
     this.teacher.setInteractive(new Phaser.Geom.Rectangle(-50, -190, 100, 170), Phaser.Geom.Rectangle.Contains);
+    this.teacher.add(
+      this.add.text(0, 12, auntie(), { fontFamily: FONT, fontSize: '30px', fontStyle: '800', color: '#ffffff', stroke: inkHex, strokeThickness: 8 }).setOrigin(0.5, 0),
+    );
     this.teacher.on('pointerdown', (p: Phaser.Input.Pointer) => {
       // Kids always win over the teacher when both are under the pointer.
       const kid = this.input.hitTestPointer(p).find((o): o is Kid => o instanceof Kid && !!o.input?.enabled);
@@ -133,6 +138,15 @@ export class WorldScene extends Phaser.Scene {
       const cb = this.sceneDone;
       this.sceneDone = null;
       cb?.(result);
+    });
+    this.listen('open-menu', () => {
+      if (this.scene.isPaused()) return;
+      this.openScene<'quit' | null>('Pause', {}, (r) => {
+        if (r !== 'quit') return;
+        stopMusic();
+        this.scene.stop('Hud');
+        this.scene.start('Title');
+      });
     });
     this.listen('open-shop', () => {
       if (this.scene.isPaused()) return;
@@ -310,7 +324,7 @@ export class WorldScene extends Phaser.Scene {
   private hintLetGo() {
     if (this.letGoHinted) return;
     this.letGoHinted = true;
-    this.time.delayedCall(2500, () => prompt('Żeby puścić rączkę dziecka, kliknij panią.'));
+    this.time.delayedCall(2500, () => prompt('Żeby puścić rączkę dziecka, kliknij ciocię.'));
   }
 
   private randomNeed() {

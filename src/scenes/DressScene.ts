@@ -41,6 +41,7 @@ export class DressScene extends Overlay {
   }
 
   create() {
+    this.items = [];
     const info = WEATHER[this.weather];
     this.background(0xfff3dc);
     this.heading('Ubieramy dzieci na dwór');

@@ -14,12 +14,14 @@ import { ShopScene } from './scenes/ShopScene';
 import { SummaryScene } from './scenes/SummaryScene';
 import { PotScene } from './scenes/PotScene';
 import { TopScene } from './scenes/TopScene';
+import { PauseScene } from './scenes/PauseScene';
 import { save, state } from './lib/state';
 
 const start = () => {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
+    dom: { createContainer: true }, // for the name text box on the start screen
     backgroundColor: '#fdf1dc',
     scale: {
       mode: Phaser.Scale.FIT,
@@ -30,7 +32,7 @@ const start = () => {
     // Order = draw order. The HUD is last so prompts show above the minigames.
     scene: [
       BootScene, TitleScene, WorldScene,
-      SandwichScene, PotScene, TopScene, PourScene, HealthScene, DressScene, ChoiceScene, CraftScene, ShopScene, SummaryScene,
+      SandwichScene, PotScene, TopScene, PourScene, HealthScene, DressScene, ChoiceScene, CraftScene, ShopScene, SummaryScene, PauseScene,
       HudScene,
     ],
   });

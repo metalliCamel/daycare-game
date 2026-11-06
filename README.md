@@ -33,7 +33,9 @@ Hania is the teacher. Click the floor (or use the arrow keys) to walk through th
 
 Dishes alternate day by day (see `src/world/menu.ts`).
 
-**Stars** are earned for everything and spent in the shop (🛍️) on decorations that appear in the rooms. Progress (stars, day, decorations, drawings, chosen teacher, music on/off) is saved in the browser.
+**Start screen:** new game or load game, in three save slots. A new game asks for the teacher's name ("Ciocia Patrycja") and look. In the game, 💾 saves and goes back to the start screen; loading continues from the morning of the saved day.
+
+**Stars** are earned for everything and spent in the shop (🛍️) on decorations that appear in the rooms. Progress (stars, day, decorations, drawings, teacher name and look, music on/off) is saved in the browser, per save slot.
 
 ## Design rules
 

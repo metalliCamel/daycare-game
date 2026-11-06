@@ -28,6 +28,7 @@ export class CraftScene extends Overlay {
   }
 
   create() {
+    this.swatches = [];
     const pic = PICTURES[this.pic];
     this.colors = pic.regions.map(() => 0xffffff);
     this.painted.clear();

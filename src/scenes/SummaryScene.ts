@@ -4,6 +4,7 @@ import { KIDS } from '../objects/Kid';
 import { bigButton } from '../lib/ui';
 import { prompt } from '../lib/state';
 import { stars } from '../lib/plural';
+import { auntieVoc } from '../lib/names';
 import { sfx } from '../lib/sound';
 
 /** End of the day: stars earned and a wave goodbye. */
@@ -34,7 +35,7 @@ export class SummaryScene extends Overlay {
     this.add.image(GAME_W / 2 - 160, 470, 'star').setDisplaySize(110, 110);
     this.add.text(GAME_W / 2 - 90, 470, `+${this.stars} dzisiaj`, { fontFamily: FONT, fontSize: '64px', fontStyle: '800', color: inkHex }).setOrigin(0, 0.5);
     this.add.text(GAME_W / 2, 560, `Razem masz ${stars(this.total)} do wydania w sklepiku.`, { fontFamily: FONT, fontSize: '38px', fontStyle: '700', color: inkHex }).setOrigin(0.5);
-    prompt(`Koniec dnia! Dzisiaj zdobyłaś ${stars(this.stars)}. Wszystkie dzieci są już w domu. Świetna robota, pani Haniu!`);
+    prompt(`Koniec dnia! Dzisiaj zdobyłaś ${stars(this.stars)}. Wszystkie dzieci są już w domu. Świetna robota, ${auntieVoc()}!`);
     bigButton(this, GAME_W / 2, 690, 'Następny dzień', () => this.close('next'), { w: 560, speak: 'Następny dzień' });
   }
 }

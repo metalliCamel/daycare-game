@@ -22,6 +22,7 @@ export class HudScene extends Phaser.Scene {
   private map!: Phaser.GameObjects.Container;
   private shopBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
   private musicBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
+  private menuBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
   private mapButtons: { bg: Phaser.GameObjects.Graphics; dot: Phaser.GameObjects.Arc; x: number }[] = [];
 
   constructor() {
@@ -29,6 +30,7 @@ export class HudScene extends Phaser.Scene {
   }
 
   create() {
+    this.mapButtons = [];
     // Stars (top-left)
     const sb = this.add.graphics();
     sb.fillStyle(0xffffff, 0.92).fillRoundedRect(20, 20, 220, 90, 40);
@@ -49,6 +51,7 @@ export class HudScene extends Phaser.Scene {
       return { g, t, z };
     };
     this.shopBtn = mkBtn(300, '🛍️', 'Sklepik', () => bus.emit('open-shop'));
+    this.menuBtn = mkBtn(500, '💾', 'Zapisz i wyjdź', () => bus.emit('open-menu'));
     const music = (this.musicBtn = mkBtn(400, isMusicOn() ? '🎵' : '🔇', 'Muzyka', () => {
       const on = !isMusicOn();
       setMusic(on);
@@ -131,7 +134,7 @@ export class HudScene extends Phaser.Scene {
 
     const onMinigame = (on: boolean) => {
       this.map.setVisible(!on);
-      for (const b of [this.shopBtn, this.musicBtn]) {
+      for (const b of [this.shopBtn, this.musicBtn, this.menuBtn]) {
         b.g.setVisible(!on);
         b.t.setVisible(!on);
         if (b.z.input) b.z.input.enabled = !on;
