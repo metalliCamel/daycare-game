@@ -34,7 +34,7 @@ export class Playroom implements Module {
     prop(w, 'crayon', p + 680, 650, 70, 691);
     prop(w, 'picture', p + 770, 650, 70, 691);
     const zone = w.add.zone(p + 660, 615, 340, 70).setDepth(692);
-    w.clickable(zone, () => w.goThen(p + 660, 780, () => this.openCraft()), 'Stolik do rysowania');
+    w.clickable(zone, () => w.goThen(p + 660, 780, () => this.useTable()), 'Stolik do rysowania');
 
     this.renderDrawings();
   }
@@ -129,17 +129,41 @@ export class Playroom implements Module {
 
   // ---------- Crafts ----------
 
-  private openCraft() {
+  /** The craft table: draw alone, or with a child who asked to draw. */
+  private useTable() {
+    const w = this.w;
+    const kid = w.holding;
+    if (kid && w.play.wantsToDraw(kid)) {
+      w.takeHeld();
+      kid.mode = 'busy';
+      kid.walkTo(roomX('sala') + 560, 720, () => this.openCraft((drew) => {
+        if (drew) w.play.finishDrawing(kid);
+        else kid.mode = 'free';
+      }));
+      return;
+    }
+    if (kid?.need === 'play') {
+      say(`${kid.def.name} chce czegoś innego. Popatrz na dymek!`);
+      return;
+    }
+    this.openCraft();
+  }
+
+  openCraft(after?: (drew: boolean) => void) {
     if (state.phase !== 'free') return prompt('Porysujemy później, teraz mamy inne zajęcie.');
     const idx = save.drawings.length % PICTURES.length;
     this.w.openScene<string | null>('Craft', { picture: idx }, (result) => {
-      if (!result) return;
+      if (!result) {
+        after?.(false);
+        return;
+      }
       save.drawings.push(result);
       if (save.drawings.length > 8) save.drawings.shift();
       persist();
       this.renderDrawings();
       addStars(3);
       prompt('Piękny rysunek! Wisi już na ścianie w sali.');
+      after?.(true);
     });
   }
 

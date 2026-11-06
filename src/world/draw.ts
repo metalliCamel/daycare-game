@@ -91,8 +91,7 @@ function decorate(scene: Phaser.Scene, g: Phaser.GameObjects.Graphics) {
   prop(scene, 'palette', p + 300, 185, 100, -80);
   windowAt(g, p + 980, 200);
   prop(scene, 'couch', p + 1250, 650, 300);
-  prop(scene, 'blocks', p + 1450, 820, 100);
-  prop(scene, 'puzzle', p + 1080, 840, 90);
+
 
   // Dining room: table is drawn in front of seated kids (depth 650)
   const j = x0('jadalnia');

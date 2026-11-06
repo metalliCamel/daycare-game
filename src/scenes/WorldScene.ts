@@ -14,6 +14,7 @@ import { Cloakroom } from '../world/cloakroom';
 import { Outside } from '../world/outside';
 import { Nap } from '../world/nap';
 import { Decor } from '../world/decor';
+import { PlayCorner } from '../world/playcorner';
 
 export type Item = { id: 'teddy' | 'tray'; img: Phaser.GameObjects.Image; home: { x: number; y: number } };
 
@@ -39,6 +40,7 @@ export class WorldScene extends Phaser.Scene {
   outside!: Outside;
   nap!: Nap;
   decor!: Decor;
+  play!: PlayCorner;
   private modules: Module[] = [];
 
   private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd', Phaser.Input.Keyboard.Key>;
@@ -100,7 +102,8 @@ export class WorldScene extends Phaser.Scene {
     this.cloak = new Cloakroom(this);
     this.outside = new Outside(this);
     this.nap = new Nap(this);
-    this.modules = [this.cloak, this.outside, this.nap, this.playroom, this.meals, this.bathroom];
+    this.play = new PlayCorner(this);
+    this.modules = [this.cloak, this.outside, this.nap, this.play, this.playroom, this.meals, this.bathroom];
 
     this.schedule = [
       { at: 9 * 60, run: () => this.meals.start('Śniadanie') },
@@ -278,21 +281,25 @@ export class WorldScene extends Phaser.Scene {
     const free = kids.filter((k) => !k.need && k.mode === 'free');
     if (!free.length) return;
     const r = Math.random();
-    if (r < 0.1 && !this.sickToday && kids.length > 3) {
+    const kid = Phaser.Utils.Array.GetRandom(free);
+    if (r < 0.08 && !this.sickToday && kids.length > 3) {
       this.sickToday = true;
-      const kid = Phaser.Utils.Array.GetRandom(free);
       kid.setNeed('sick');
       sfx.sad();
       prompt(`${kid.def.name} źle się czuje. Kliknij, żeby zmierzyć temperaturę.`);
-    } else if (r < 0.35 && free.length >= 2) {
+    } else if (r < 0.25 && free.length >= 2) {
       this.playroom.startFight(free);
-    } else if (r < 0.6) {
-      const kid = Phaser.Utils.Array.GetRandom(free);
+    } else if (r < 0.4) {
       kid.setNeed('sad');
       sfx.sad();
       prompt(kid.needText());
+    } else if (r < 0.75) {
+      // Most often: a child wants to play something
+      if (!this.play.ask(kid)) {
+        kid.setNeed('potty');
+        prompt(kid.needText());
+      }
     } else {
-      const kid = Phaser.Utils.Array.GetRandom(free);
       kid.setNeed('potty');
       prompt(kid.needText());
     }

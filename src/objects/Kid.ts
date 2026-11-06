@@ -4,7 +4,7 @@ import { ROOM_W, FLOOR_MIN_Y, FLOOR_MAX_Y, roomIndexAt } from '../lib/rooms';
 import type { EmojiKey } from '../lib/assets';
 import { FONT, inkHex } from '../lib/layout';
 
-export type Need = 'check' | 'potty' | 'wash' | 'sad' | 'hungry' | 'sick' | 'fight' | 'coat' | 'dress' | 'wish' | 'awake' | 'home' | null;
+export type Need = 'check' | 'potty' | 'wash' | 'sad' | 'hungry' | 'sick' | 'fight' | 'coat' | 'dress' | 'wish' | 'awake' | 'home' | 'play' | null;
 
 export type KidDef = {
   id: string;
@@ -46,6 +46,7 @@ const NEED_ICON: Record<Exclude<Need, null>, EmojiKey> = {
   wish: 'swing' as EmojiKey,
   awake: 'cry',
   home: 'car',
+  play: 'blocks',
 };
 
 /**
@@ -168,10 +169,15 @@ export class Kid extends Walker {
       case 'coat': return `${n} musi zdjąć kurtkę. Kliknij ${this.adj('ją', 'go')}, a potem wieszak z ${this.adj('jej', 'jego')} buzią.`;
       case 'dress': return `${n} musi się ubrać na dwór.`;
       case 'wish': return `${n} chce się bawić: ${this.wishName()}. Zaprowadź tam!`;
+      case 'play': return `${n} chce się bawić: ${this.playName()}. Kliknij ${this.adj('ją', 'go')} i zaprowadź do zabawy!`;
       case 'awake': return `${n} nie może zasnąć. Kliknij, żeby pogłaskać.`;
       case 'home': return this.wearing.includes('coat') ? `Kurtka ubrana! Teraz kliknij: ${this.def.parentLabel}.` : `${this.def.parentLabel} czeka na ${this.def.acc}. Kliknij ${this.adj('ją', 'go')}, a potem wieszak z ${this.adj('jej', 'jego')} buzią.`;
       default: return `To jest ${n}.`;
     }
+  }
+
+  private playName() {
+    return { blocks: 'klocki', puzzle: 'puzzle', ball: 'piłka', books: 'książeczka', draw: 'rysowanie' }[this.wish ?? ''] ?? 'zabawa';
   }
 
   private wishName() {
@@ -212,7 +218,7 @@ export class Kid extends Walker {
       const tx = leader.x + side * 95;
       const ty = leader.y + 8;
       if (Math.hypot(tx - this.x, ty - this.y) > 12) this.walkTo(tx, ty);
-    } else if (this.mode === 'free' && (this.need === 'sad' || this.need === 'sick' || this.need === 'fight')) {
+    } else if (this.mode === 'free' && (this.need === 'sad' || this.need === 'sick' || this.need === 'fight' || this.need === 'play')) {
       // Upset or poorly kids stand still and wait for help.
       if (this.moving) this.stop();
     } else if (this.mode === 'free') {
