@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { trait } from './traits';
 import type { WorldScene, Module } from '../scenes/WorldScene';
 import type { Kid } from '../objects/Kid';
 import { roomX, roomIndexAt } from '../lib/rooms';
@@ -161,11 +162,16 @@ export class Outside implements Module {
       this.step = 'play';
       this.startWeatherFx();
       prompt('Wszyscy ubrani! Idziemy na plac zabaw. Każde dziecko chce się pobawić czymś innym.');
+      const picked = new Map<string, number>();
       kids.forEach((kid, i) => {
         kid.setWearing(WEATHER[this.weather].wear);
         kid.mode = 'busy';
         kid.setNeed(null);
-        const wish = WISHES[i % WISHES.length];
+        // Favourite playground thing first (at most two kids on one thing)
+        const favId = trait(kid.def.id)?.outside;
+        const fav = WISHES.find((x) => x.id === favId);
+        const wish = fav && (picked.get(fav.id) ?? 0) < 2 && Math.random() < 0.7 ? fav : WISHES[i % WISHES.length];
+        picked.set(wish.id, (picked.get(wish.id) ?? 0) + 1);
         kid.walkTo(this.d + 250 + i * 140, 680 + (i % 2) * 70, () => {
           kid.wish = wish.id;
           kid.setNeed('wish', wish.id === 'sand' ? SAND[this.season].wish : wish.icon);

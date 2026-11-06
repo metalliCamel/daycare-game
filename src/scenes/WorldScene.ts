@@ -3,7 +3,7 @@ import { drawBuilding } from '../world/draw';
 import { ROOM_W, WORLD_W, roomX, roomIndexAt, FLOOR_MIN_Y } from '../lib/rooms';
 import { Walker } from '../objects/Walker';
 import { Kid, KIDS } from '../objects/Kid';
-import { bus, state, save, prompt, type Phase } from '../lib/state';
+import { bus, state, save, prompt, persist, type Phase } from '../lib/state';
 import { say, sayHover } from '../lib/voice';
 import { sfx, playDayMusic, stopMusic } from '../lib/sound';
 import type { EmojiKey } from '../lib/assets';
@@ -23,6 +23,7 @@ import { Garden } from '../world/garden';
 import { Pet } from '../world/pet';
 import { unlocked } from '../world/progress';
 import { playClip } from '../lib/clips';
+import { trait, weighted } from '../world/traits';
 
 export type Item = { id: 'teddy' | 'tray'; img: Phaser.GameObjects.Image; home: { x: number; y: number } };
 
@@ -165,6 +166,7 @@ export class WorldScene extends Phaser.Scene {
     });
     this.listen('open-menu', () => {
       if (this.scene.isPaused()) return;
+      this.checkpoint();
       this.openScene<'quit' | null>('Pause', {}, (r) => {
         if (r !== 'quit') return;
         stopMusic();
@@ -189,10 +191,73 @@ export class WorldScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.busHandlers.forEach(([e, h]) => bus.off(e, h)));
 
     playDayMusic();
+    this.lastDoneAt = -1;
+    this.lastCheckpoint = 0;
+    const r = save.resume;
+    if (r && r.day === save.day) {
+      this.resumeDay(r);
+      return;
+    }
+    save.resume = null;
     this.setPhase('dropoff');
     state.minutes = 7 * 60 + 30;
     bus.emit('clock', state.minutes);
     this.cloak.startDropoff();
+  }
+
+  // ---------- Saving in the middle of the day ----------
+
+  private lastDoneAt = -1;
+  private lastCheckpoint = 0;
+
+  /** Remember the day so far, so a saved game continues from here (free time only). */
+  checkpoint() {
+    if (state.phase !== 'free') return;
+    save.resume = {
+      day: save.day,
+      minutes: Math.floor(state.minutes),
+      done: this.lastDoneAt,
+      present: [...state.present],
+      starsToday: state.starsToday,
+      sick: this.sickToday,
+      mess: this.messToday,
+    };
+    this.lastCheckpoint = state.minutes;
+    persist();
+  }
+
+  /** Continue a saved day: kids already here, coats on the hooks, free time. */
+  private resumeDay(r: NonNullable<typeof save.resume>) {
+    state.minutes = r.minutes;
+    state.starsToday = r.starsToday;
+    this.sickToday = r.sick;
+    this.messToday = r.mess;
+    this.lastDoneAt = r.done;
+    this.nextSchedule = this.schedule.findIndex((e) => e.at > r.done);
+    if (this.nextSchedule < 0) this.nextSchedule = this.schedule.length;
+    const sala = roomX('sala');
+    state.present = r.present.filter((id) => this.kids.some((k) => k.def.id === id));
+    for (const id of state.present) {
+      const kid = this.kids.find((k) => k.def.id === id)!;
+      kid.setPresent(true);
+      kid.setPosition(sala + Phaser.Math.Between(250, 1100), Phaser.Math.Between(660, 820));
+      kid.mode = 'free';
+      kid.setWearing([]);
+      this.today.dress(kid);
+      // A new child who wasn't comforted yet is still a bit sad
+      if (this.today.isNewKid(kid)) {
+        kid.setNeed('sad');
+        kid.homeRoom = roomIndexAt(roomX('szatnia') + 300);
+        kid.setPosition(roomX('szatnia') + 600, 760);
+      }
+    }
+    this.cloak.resume(state.present);
+    this.teacher.setPosition(sala + 700, 760);
+    this.cameras.main.centerOnX(this.teacher.x);
+    this.backToFree();
+    const h = Math.floor(r.minutes / 60);
+    const m = r.minutes % 60;
+    prompt(`Wracamy do przedszkola! Jest ${h}:${m < 10 ? '0' : ''}${m}. Dzieci bawią się w sali.`);
   }
 
   private outfitImg: Phaser.GameObjects.Image | null = null;
@@ -231,6 +296,7 @@ export class WorldScene extends Phaser.Scene {
     this.setPhase('free');
     this.needTimer = Phaser.Math.Between(12000, 20000);
     bus.emit('clock', state.minutes);
+    this.checkpoint();
   }
 
   clickable<T extends Phaser.GameObjects.Image | Phaser.GameObjects.Zone>(obj: T, onClick: () => void, hover?: string): T {
@@ -333,7 +399,8 @@ export class WorldScene extends Phaser.Scene {
     this.teacher.walkTo(kid.x + 110, kid.y + 5, () => {
       if (kid.mode === 'busy' || !kid.present) return;
       this.hold(kid);
-      say(kid.need ? kid.needText() : `${kid.def.name}, chodź ze mną!`);
+      const line = Phaser.Utils.Array.GetRandom(trait(kid.def.id)?.lines ?? [`${kid.def.name}, chodź ze mną!`]);
+      say(kid.need ? kid.needText() : `${kid.def.name}: ${line}`);
       this.hintLetGo();
     });
   }
@@ -398,9 +465,11 @@ export class WorldScene extends Phaser.Scene {
     } else if (r < 0.25 && free.length >= 2) {
       this.playroom.startFight(free);
     } else if (r < 0.4) {
-      kid.setNeed('sad');
+      // Shy kids get sad more often
+      const sadKid = weighted(free, (k) => trait(k.def.id)?.sad ?? 1);
+      sadKid.setNeed('sad');
       sfx.sad();
-      prompt(kid.needText());
+      prompt(sadKid.needText());
     } else if (r < 0.75) {
       // Most often: a child wants to play something
       if (!this.play.ask(kid)) {
@@ -473,6 +542,7 @@ export class WorldScene extends Phaser.Scene {
     const allSettled = !blocker && this.presentKids.every((kid) => kid.mode !== 'busy' && !kid.need);
     if (ev && state.minutes >= ev.at) {
       if (allSettled) {
+        this.lastDoneAt = ev.at;
         this.nextSchedule++;
         this.nagTimer = 0;
         if (this.holding) this.letGo();
@@ -492,6 +562,8 @@ export class WorldScene extends Phaser.Scene {
       }
     } else {
       state.minutes += dt * CLOCK_SPEED;
+      // Save every 10 game minutes of free time
+      if (state.minutes - this.lastCheckpoint >= 10) this.checkpoint();
     }
     bus.emit('clock', state.minutes);
   }

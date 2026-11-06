@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { trait, weighted } from './traits';
 import type { WorldScene, Module } from '../scenes/WorldScene';
 import type { Kid } from '../objects/Kid';
 import { roomX } from '../lib/rooms';
@@ -161,10 +162,10 @@ export class Nap implements Module {
       const asleep = this.beds.filter((b) => b.kid && b.kid.need !== 'awake').map((b) => b.kid!) as Kid[];
       if (this.sleepLeft > 0 && asleep.length) {
         this.sleepLeft--;
-        const kid = Phaser.Utils.Array.GetRandom(asleep);
+        const kid = weighted(asleep, (k) => trait(k.def.id)?.wake ?? 1);
         kid.setNeed('awake');
         sfx.sad();
-        prompt(kid.needText());
+        prompt(trait(kid.def.id)?.wakeText ?? kid.needText());
         this.scheduleWake();
       } else {
         this.waitForAllAsleep();

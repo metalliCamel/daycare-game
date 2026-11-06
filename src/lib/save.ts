@@ -26,6 +26,19 @@ export type SaveData = {
   outfits: string[];
   outfit: string | null;
   birthdays: number;
+  /** where to pick the day up again (saved during free time), or null = start in the morning */
+  resume: Resume | null;
+};
+
+export type Resume = {
+  day: number;
+  minutes: number;
+  /** time of the last schedule entry that already happened (-1 = none) */
+  done: number;
+  present: string[];
+  starsToday: number;
+  sick: boolean;
+  mess: boolean;
 };
 
 export const SLOT_COUNT = 3;
@@ -51,6 +64,7 @@ export const DEFAULTS: SaveData = {
   outfits: [],
   outfit: null,
   birthdays: 0,
+  resume: null,
 };
 
 /** Saves from before gradual unlocks keep everything they already had. */

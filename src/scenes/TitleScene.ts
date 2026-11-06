@@ -115,8 +115,10 @@ export class TitleScene extends Phaser.Scene {
       const name = data.teacherName ? `Ciocia ${data.teacherName}` : 'Ciocia';
       parts.push(this.add.image(0, -40, data.teacher).setDisplaySize(150, 150));
       parts.push(this.add.text(0, 65, name, { fontFamily: FONT, fontSize: '36px', fontStyle: '800', color: inkHex }).setOrigin(0.5));
-      parts.push(this.add.text(0, 115, `Dzień ${data.day}  ·  ⭐ ${data.stars}`, { fontFamily: FONT, fontSize: '32px', fontStyle: '700', color: inkHex }).setOrigin(0.5));
-      speak = `${name}. Dzień ${data.day}. ${stars(data.stars)}.`;
+      const r = data.resume?.day === data.day ? data.resume : null;
+      const at = r ? ` · ${Math.floor(r.minutes / 60)}:${String(r.minutes % 60).padStart(2, '0')}` : '';
+      parts.push(this.add.text(0, 115, `Dzień ${data.day}${at}${r ? ' · ' : '  ·  '}⭐ ${data.stars}`, { fontFamily: FONT, fontSize: r ? '28px' : '32px', fontStyle: '700', color: inkHex }).setOrigin(0.5));
+      speak = `${name}. Dzień ${data.day}.${r ? ` Godzina ${at.replace(' · ', '').replace(':', ' ')}.` : ''} ${stars(data.stars)}.`;
     } else {
       parts.push(this.add.text(0, 20, 'Puste\nmiejsce', { fontFamily: FONT, fontSize: '40px', fontStyle: '700', color: '#a89cb5', align: 'center' }).setOrigin(0.5));
     }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Walker } from './Walker';
+import { TRAITS } from '../world/traits';
 import { ROOM_W, FLOOR_MIN_Y, FLOOR_MAX_Y, roomIndexAt } from '../lib/rooms';
 import type { EmojiKey } from '../lib/assets';
 import { FONT, inkHex } from '../lib/layout';
@@ -231,7 +232,7 @@ export class Kid extends Walker {
 
   update(dt: number, leader?: Walker) {
     if (!this.present) return;
-    this.speed = this.mode === 'following' ? 420 : this.mode === 'busy' ? 330 : 230;
+    this.speed = this.mode === 'following' ? 420 : this.mode === 'busy' ? 330 : 230 * (TRAITS[this.def.id]?.pace ?? 1);
     if (this.mode === 'following' && leader) {
       // Stay just behind the teacher, holding her hand.
       const side = leader.sprite.flipX ? -1 : 1;

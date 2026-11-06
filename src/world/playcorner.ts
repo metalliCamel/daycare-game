@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { trait } from './traits';
 import type { WorldScene, Module } from '../scenes/WorldScene';
 import type { Kid } from '../objects/Kid';
 import { roomX } from '../lib/rooms';
@@ -69,7 +70,9 @@ export class PlayCorner implements Module {
     const taken = new Set(this.w.presentKids.filter((k) => k.need === 'play').map((k) => k.wish));
     const options = (Object.keys(PLAY) as PlayId[]).filter((id) => !taken.has(id) && !this.spots.get(id)!.busy && (id !== 'pet' || save.pet.has));
     if (!options.length) return false;
-    const id = Phaser.Utils.Array.GetRandom(options);
+    // Each child has a favourite game and asks for it more often
+    const fav = trait(kid.def.id)?.play;
+    const id = fav && options.includes(fav) && Math.random() < 0.55 ? fav : Phaser.Utils.Array.GetRandom(options);
     kid.wish = id;
     kid.setNeed('play', PLAY[id].icon);
     prompt(kid.needText());
@@ -259,12 +262,15 @@ export class PlayCorner implements Module {
   private done(kid: Kid, text: string) {
     for (const s of this.spots.values()) if (s.busy === kid) s.busy = null;
     befriend(kid);
+    const t = trait(kid.def.id);
+    const fav = t && kid.wish === t.play;
+    if (fav) befriend(kid); // the favourite game counts double
     kid.setNeed(null);
     kid.mode = 'free';
     kid.cheer();
     sfx.giggle();
     addStars();
-    say(text);
+    say(fav ? `${text} ${t.favLine}` : text);
   }
 
   waiting(kid: Kid): string | null {

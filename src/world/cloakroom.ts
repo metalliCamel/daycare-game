@@ -79,6 +79,12 @@ export class Cloakroom implements Module {
     prompt(`Dzień ${save.day}. Dzień dobry!${news}${intro ? ' ' + intro : ''} Dzieci przychodzą. Przywitaj je w szatni.`);
   }
 
+  /** A saved day continues: only the kids who are here have coats on their hooks. */
+  resume(present: string[]) {
+    this.phaseMode = null;
+    this.hooks.forEach((h) => h.coat.setVisible(present.includes(h.kidId)));
+  }
+
   // ---------- Afternoon ----------
 
   startPickup() {
@@ -303,6 +309,7 @@ export class Cloakroom implements Module {
       // Overnight: the garden grows, the group and the daily routine grow
       Garden.grow(save.day);
       stat('days');
+      save.resume = null;
       save.day++;
       save.level++;
       if (save.level >= 2 && !save.group.includes('maja')) save.group.push('maja');

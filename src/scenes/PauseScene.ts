@@ -21,7 +21,9 @@ export class PauseScene extends Overlay {
     this.add
       .text(GAME_W / 2, 450, `${auntie()}  ·  Dzień ${save.day}  ·  ⭐ ${save.stars}`, { fontFamily: FONT, fontSize: '40px', fontStyle: '800', color: inkHex })
       .setOrigin(0.5);
-    prompt(`Gra jest zapisana: dzień ${save.day}, ${stars(save.stars)}. Po wczytaniu zaczniemy ten dzień od rana.`);
+    const r = save.resume?.day === save.day ? save.resume : null;
+    const at = r ? `${Math.floor(r.minutes / 60)}:${String(r.minutes % 60).padStart(2, '0')}` : '';
+    prompt(`Gra jest zapisana: dzień ${save.day}, ${stars(save.stars)}. ${r ? `Po wczytaniu wrócimy do godziny ${at}.` : 'Po wczytaniu zaczniemy ten dzień od rana.'}`);
     // Wardrobe: outfits bought in the shop
     const owned = SHOP.filter((it) => it.outfit && save.outfits.includes(it.id));
     if (owned.length) {

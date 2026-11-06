@@ -41,11 +41,13 @@ Dishes alternate day by day (see `src/world/menu.ts`).
 
 **More to look after:** the garden (water the plots, harvest carrots, tomatoes, strawberries, sunflowers), Chomik Ciapek (food, water, cleaning, a cuddle), plasters after a fall outside, teeth brushing after lunch, tidying up scattered toys, the drum, and clay.
 
+**Personalities:** every child has a favourite game, a favourite playground thing and favourite foods, and asks for them more often (the favourite game counts double for friendship). Franek runs everywhere, Staś takes his time, Lena gets sad more easily, Ola is afraid of the dark at nap time. All of it is in the album and in `src/world/traits.ts`.
+
 **Friendship and album (📖):** every kind act adds hearts with a child; at 5 and 10 hearts the child tells a secret. The album also collects 18 stickers for achievements.
 
 **Shop and break menu:** decorations can be dragged around their room; teacher outfits are worn and changed in the break menu. 🎙️ in the break menu lets a parent record short clips (good morning, bravo, good night) that the game plays at those moments (needs microphone permission).
 
-**Start screen:** new game or load game, in three save slots. A new game asks for the teacher's name ("Ciocia Patrycja") and look. In the game, 💾 saves and goes back to the start screen; loading continues from the morning of the saved day.
+**Start screen:** new game or load game, in three save slots. A new game asks for the teacher's name ("Ciocia Patrycja") and look. In the game, 💾 saves and goes back to the start screen. The day is saved during free time (every few game minutes and before each activity), so loading continues from that hour; an activity that was interrupted starts again.
 
 **Stars** are earned for everything and spent in the shop (🛍️) on decorations that appear in the rooms. Progress (stars, day, decorations, drawings, teacher name and look, music on/off) is saved in the browser, per save slot.
 
