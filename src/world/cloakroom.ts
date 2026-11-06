@@ -15,7 +15,7 @@ const SLOTS = [200, 420];
 /** Morning arrivals with a health check, coats on hooks, and afternoon pickup. */
 export class Cloakroom implements Module {
   private s = roomX('szatnia');
-  private hooks: { x: number; kidId: string; coat: Phaser.GameObjects.Image }[] = [];
+  private hooks: { x: number; kidId: string; coat: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Container }[] = [];
   private visits: Visit[] = [];
   private queue: string[] = [];
   private feverKid: string | null = null;
@@ -35,9 +35,16 @@ export class Cloakroom implements Module {
       w.add.image(x, 172, def.key).setDisplaySize(70, 70).setDepth(-69);
       w.add.text(x, 214, def.name, { fontFamily: FONT, fontSize: '20px', fontStyle: '800', color: inkHex }).setOrigin(0.5).setDepth(-69);
       const coat = w.add.image(x, 340, 'coat').setDisplaySize(130, 130).setDepth(-68);
+      // Glowing frame + bouncing arrow, shown when the teacher brings this child
+      const ring = w.add.graphics();
+      ring.lineStyle(10, 0xffd45c, 1).strokeRoundedRect(-62, -52, 124, 124, 26);
+      const arrow = w.add.text(0, -95, '⬇', { fontSize: '64px', color: '#ff7a6b' }).setOrigin(0.5);
+      const glow = w.add.container(x, 182, [ring, arrow]).setDepth(-65).setVisible(false);
+      w.tweens.add({ targets: arrow, y: -75, duration: 400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      w.tweens.add({ targets: ring, alpha: 0.4, duration: 500, yoyo: true, repeat: -1 });
       const zone = w.add.zone(x, 330, 150, 380).setDepth(-60);
       w.clickable(zone, () => w.goThen(x, 690, () => this.useHook(def.id)), `Wieszak: ${def.name}`);
-      this.hooks.push({ x, kidId: def.id, coat });
+      this.hooks.push({ x, kidId: def.id, coat, glow });
     });
   }
 
@@ -183,7 +190,7 @@ export class Cloakroom implements Module {
       state.present.push(kid.def.id);
       addStars();
       sfx.giggle();
-      prompt(`Dzień dobry! Teraz zaprowadź ${kid.def.acc} do wieszaka z ${kid.adj('jej', 'jego')} buzią.`);
+      prompt(`Dzień dobry! Teraz kliknij ${kid.def.acc}, a potem świecący wieszak z ${kid.adj('jej', 'jego')} buzią.`);
       if (v) this.leave(v, false);
     });
   }
@@ -278,6 +285,10 @@ export class Cloakroom implements Module {
 
   update(dt: number) {
     for (const p of [...this.walkers]) p.step(dt);
+    // Light up the hook of the child the teacher is holding, when they need it
+    const held = this.w.holding;
+    const needsHook = held && (held.need === 'coat' || (held.need === 'home' && !held.wearing.includes('coat')));
+    for (const h of this.hooks) h.glow.setVisible(!!needsHook && h.kidId === held!.def.id);
     if (!this.phaseMode || !this.queue.length) return;
     // Up to two families at the door at once
     this.spawnTimer -= dt * 1000;

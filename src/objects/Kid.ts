@@ -165,11 +165,11 @@ export class Kid extends Walker {
       case 'hungry': return `${n} jest ${this.adj('głodna', 'głodny')}.`;
       case 'sick': return `${n} źle się czuje. Kliknij, żeby zmierzyć temperaturę.`;
       case 'fight': return `${n} kłóci się o zabawkę.`;
-      case 'coat': return `${n} musi zdjąć kurtkę. Zaprowadź do wieszaka.`;
+      case 'coat': return `${n} musi zdjąć kurtkę. Kliknij ${this.adj('ją', 'go')}, a potem wieszak z ${this.adj('jej', 'jego')} buzią.`;
       case 'dress': return `${n} musi się ubrać na dwór.`;
       case 'wish': return `${n} chce się bawić: ${this.wishName()}. Zaprowadź tam!`;
       case 'awake': return `${n} nie może zasnąć. Kliknij, żeby pogłaskać.`;
-      case 'home': return `${this.def.parentLabel} czeka na ${this.def.acc} w szatni. Najpierw kurtka!`;
+      case 'home': return this.wearing.includes('coat') ? `Kurtka ubrana! Teraz kliknij: ${this.def.parentLabel}.` : `${this.def.parentLabel} czeka na ${this.def.acc}. Kliknij ${this.adj('ją', 'go')}, a potem wieszak z ${this.adj('jej', 'jego')} buzią.`;
       default: return `To jest ${n}.`;
     }
   }
