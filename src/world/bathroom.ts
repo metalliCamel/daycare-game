@@ -7,7 +7,15 @@ import { addStars, prompt } from '../lib/state';
 import { say } from '../lib/voice';
 import { sfx } from '../lib/sound';
 
-type Toilet = { img: Phaser.GameObjects.Image; kid: Kid | null; flushReady: boolean };
+type Toilet = {
+  img: Phaser.GameObjects.Image;
+  kid: Kid | null;
+  flushReady: boolean;
+  /** progress ring while the child is on the toilet, then the flush button */
+  ui: Phaser.GameObjects.Container | null;
+};
+
+const POTTY_MS = 3500;
 
 /** Toilet → flush → wash hands at the sink. */
 export class Bathroom implements Module {
@@ -17,7 +25,7 @@ export class Bathroom implements Module {
     const l = roomX('lazienka');
     [l + 330, l + 650].forEach((x) => {
       const img = prop(w, 'toilet', x, 650, 180);
-      const t: Toilet = { img, kid: null, flushReady: false };
+      const t: Toilet = { img, kid: null, flushReady: false, ui: null };
       this.toilets.push(t);
       w.clickable(img, () => w.goThen(x + 130, 700, () => this.useToilet(t)), 'Toaleta');
     });
@@ -39,17 +47,63 @@ export class Bathroom implements Module {
     kid.walkTo(t.img.x, 625, () => {
       kid.setNeed(null);
       kid.fixedDepth = t.img.depth + 1;
-      w.time.delayedCall(2500, () => {
+      prompt(`${kid.def.name} siedzi na toalecie. Poczekaj, aż kółko się zapełni.`);
+      this.showProgress(t, () => {
         t.flushReady = true;
         w.puff('sparkles', t.img.x, t.img.y - 200);
-        prompt('Gotowe! Kliknij toaletę, żeby spłukać wodę.');
+        this.showFlushButton(t);
+        prompt('Gotowe! Kliknij niebieski przycisk, żeby spłukać wodę.');
       });
     }, true);
   }
 
+  /** A ring above the toilet that fills up while the child is busy. */
+  private showProgress(t: Toilet, done: () => void) {
+    const w = this.w;
+    const x = t.img.x;
+    const y = t.img.y - 250;
+    const bg = w.add.circle(0, 0, 52, 0xffffff, 0.95).setStrokeStyle(5, 0x4a3a5c, 0.2);
+    const ring = w.add.graphics();
+    const icon = w.add.image(0, 0, 'toiletpaper').setDisplaySize(56, 56);
+    t.ui = w.add.container(x, y, [bg, ring, icon]).setDepth(3000);
+    const p = { v: 0 };
+    w.tweens.add({
+      targets: p, v: 1, duration: POTTY_MS,
+      onUpdate: () => {
+        ring.clear();
+        ring.lineStyle(12, 0x6bd66b, 1);
+        ring.beginPath();
+        ring.arc(0, 0, 44, -Math.PI / 2, -Math.PI / 2 + p.v * Math.PI * 2, false);
+        ring.strokePath();
+      },
+      onComplete: () => {
+        t.ui?.destroy();
+        t.ui = null;
+        done();
+      },
+    });
+    w.tweens.add({ targets: icon, angle: { from: -8, to: 8 }, duration: 400, yoyo: true, repeat: -1 });
+  }
+
+  /** Big flush button above the toilet — never hidden behind the child. */
+  private showFlushButton(t: Toilet) {
+    const w = this.w;
+    const bg = w.add.circle(0, 0, 58, 0x4fa8ff).setStrokeStyle(6, 0xffffff);
+    const icon = w.add.image(0, -4, 'drop').setDisplaySize(64, 64);
+    const btn = w.add.container(t.img.x, t.img.y - 250, [bg, icon]).setDepth(3000).setSize(130, 130);
+    btn.setInteractive({ useHandCursor: true });
+    btn.on('pointerover', () => say('Spłucz wodę'));
+    btn.on('pointerdown', () => w.goThen(t.img.x + 130, 700, () => this.flush(t)));
+    w.tweens.add({ targets: btn, scale: 1.12, duration: 450, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    t.ui = btn;
+  }
+
   private flush(t: Toilet) {
     const w = this.w;
-    const kid = t.kid!;
+    if (!t.kid || !t.flushReady) return;
+    t.ui?.destroy();
+    t.ui = null;
+    const kid = t.kid;
     t.kid = null;
     t.flushReady = false;
     sfx.flush();
@@ -98,7 +152,12 @@ export class Bathroom implements Module {
     }, true);
   }
 
-  onKidClick(): boolean {
-    return false;
+  onKidClick(kid: Kid): boolean {
+    // Clicking the child sitting on the toilet works too
+    const t = this.toilets.find((x) => x.kid === kid);
+    if (!t) return false;
+    if (t.flushReady) this.w.goThen(t.img.x + 130, 700, () => this.flush(t));
+    else say('Poczekaj chwilkę, aż kółko się zapełni.');
+    return true;
   }
 }
