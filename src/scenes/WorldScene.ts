@@ -112,7 +112,20 @@ export class WorldScene extends Phaser.Scene {
     KIDS.forEach((def) => {
       const kid = new Kid(this, -500, 700, def);
       kid.setPresent(false);
-      kid.on('pointerdown', () => this.clickKid(kid));
+      kid.on('pointerdown', (p: Phaser.Input.Pointer) => {
+        // A child who just plays around doesn't get in the way: the toy, table
+        // or clay behind them gets the click instead.
+        if (!kid.need && kid.mode === 'free') {
+          const behind = this.input.hitTestPointer(p)
+            .filter((o) => !(o instanceof Kid) && o !== this.teacher && o.input?.enabled)
+            .sort((a, b) => ((b as unknown as { depth: number }).depth ?? 0) - ((a as unknown as { depth: number }).depth ?? 0))[0];
+          if (behind) {
+            behind.emit('pointerdown', p);
+            return;
+          }
+        }
+        this.clickKid(kid);
+      });
       kid.on('pointerover', () => {
         if (kid.need) sayHover(kid.needText());
       });

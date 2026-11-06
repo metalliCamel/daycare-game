@@ -34,11 +34,11 @@ export class Playroom implements Module {
     prop(w, 'palette', p + 540, 650, 85, 691);
     prop(w, 'crayon', p + 630, 650, 65, 691);
     prop(w, 'picture', p + 705, 650, 65, 691);
-    const zone = w.add.zone(p + 620, 615, 280, 70).setDepth(692);
-    w.clickable(zone, () => w.goThen(p + 660, 780, () => this.useTable()), 'Stolik do rysowania');
+    const zone = w.add.zone(p + 610, 615, 260, 70).setDepth(692);
+    w.clickable(zone, () => w.goThen(p + 660, 800, () => this.useTable()), 'Stolik do rysowania');
     // Clay box on the same table
     const clay = prop(w, 'clay', p + 790, 645, 80, 693);
-    w.clickable(clay, () => w.goThen(p + 660, 780, () => this.useTable()), 'Plastelina');
+    w.clickable(clay, () => w.goThen(p + 900, 800, () => this.useClay()), 'Plastelina');
 
     this.renderDrawings();
   }
@@ -170,6 +170,37 @@ export class Playroom implements Module {
   }
 
   // ---------- Clay ----------
+
+  /** The clay box: model with a child who asked for it, or just play with it. */
+  private useClay() {
+    const w = this.w;
+    const kid = w.holding;
+    if (this.clayKid) return this.clayStep();
+    if (kid && kid.need === 'play' && kid.wish === 'clay') {
+      w.takeHeld();
+      kid.mode = 'busy';
+      this.clayKid = kid;
+      this.clayN = 0;
+      kid.walkTo(roomX('sala') + 560, 720, () => prompt('Lepimy z plasteliny! Kliknij plastelinę trzy razy.'));
+      return;
+    }
+    if (kid?.need === 'play') {
+      sfx.wrong();
+      say(`${kid.def.name} chce czegoś innego. Popatrz na dymek!`);
+      return;
+    }
+    // Nobody waiting: the teacher models something herself
+    const p = roomX('sala');
+    const shapes: EmojiKey[] = ['snail', 'cat', 'dog'];
+    const names = ['Ślimak!', 'Kotek!', 'Piesek!'];
+    const i = this.soloClay++ % 3;
+    const img = prop(w, shapes[i], p + 560 + i * 70, 640, 10, 693).setTint(0xffc9a8);
+    w.tweens.add({ targets: img, displayWidth: 70, displayHeight: 70, duration: 300, ease: 'Back.out' });
+    w.tweens.add({ targets: img, alpha: 0, delay: 3000, duration: 400, onComplete: () => img.destroy() });
+    sfx.pop();
+    say(names[i]);
+  }
+  private soloClay = 0;
   private clayKid: Kid | null = null;
   private clayN = 0;
   private clayShapes: Phaser.GameObjects.Image[] = [];
