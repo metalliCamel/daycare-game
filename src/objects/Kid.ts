@@ -186,7 +186,7 @@ export class Kid extends Walker {
       case 'coat': return `${n} musi zdjąć kurtkę. Kliknij ${this.adj('ją', 'go')}, a potem wieszak z ${this.adj('jej', 'jego')} buzią.`;
       case 'dress': return `${n} musi się ubrać na dwór.`;
       case 'wish': return `${n} chce się bawić: ${this.wishName()}. Zaprowadź tam!`;
-      case 'play': return `${n} chce się bawić: ${this.playName()}. Kliknij ${this.adj('ją', 'go')} i zaprowadź do zabawy!`;
+      case 'play': return `${n} chce się bawić: ${this.playName()}. Kliknij ${this.adj('ją', 'go')} i zaprowadź do zabawy!${this.wish === 'clay' || this.wish === 'draw' ? ' To jest na stoliku do rysowania w sali.' : this.wish === 'pet' ? ' Chomik mieszka w szatni.' : ''}`;
       case 'hurt': return `${n} ${this.adj('przewróciła', 'przewrócił')} się! Kliknij, żeby nakleić plaster.`;
       case 'teeth': return `${n} musi umyć ząbki. Kliknij umywalkę w łazience.`;
       case 'awake': return `${n} nie może zasnąć. Kliknij, żeby pogłaskać.`;

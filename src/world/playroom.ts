@@ -31,11 +31,14 @@ export class Playroom implements Module {
     const g = w.add.graphics().setDepth(690);
     g.fillStyle(0xffd45c, 1).fillRoundedRect(p + 480, 640, 360, 30, 10);
     g.fillStyle(0xe0b440, 1).fillRect(p + 500, 670, 24, 90).fillRect(p + 796, 670, 24, 90);
-    prop(w, 'palette', p + 560, 650, 90, 691);
-    prop(w, 'crayon', p + 680, 650, 70, 691);
-    prop(w, 'picture', p + 770, 650, 70, 691);
-    const zone = w.add.zone(p + 660, 615, 340, 70).setDepth(692);
+    prop(w, 'palette', p + 540, 650, 85, 691);
+    prop(w, 'crayon', p + 630, 650, 65, 691);
+    prop(w, 'picture', p + 705, 650, 65, 691);
+    const zone = w.add.zone(p + 620, 615, 280, 70).setDepth(692);
     w.clickable(zone, () => w.goThen(p + 660, 780, () => this.useTable()), 'Stolik do rysowania');
+    // Clay box on the same table
+    const clay = prop(w, 'clay', p + 790, 645, 80, 693);
+    w.clickable(clay, () => w.goThen(p + 660, 780, () => this.useTable()), 'Plastelina');
 
     this.renderDrawings();
   }
@@ -156,7 +159,7 @@ export class Playroom implements Module {
       kid.mode = 'busy';
       this.clayKid = kid;
       this.clayN = 0;
-      kid.walkTo(roomX('sala') + 560, 720, () => prompt('Lepimy z plasteliny! Kliknij stolik trzy razy.'));
+      kid.walkTo(roomX('sala') + 560, 720, () => prompt('Lepimy z plasteliny! Kliknij plastelinę na stoliku trzy razy.'));
       return;
     }
     if (kid?.need === 'play') {
@@ -195,7 +198,7 @@ export class Playroom implements Module {
   }
 
   waiting(kid: Kid): string | null {
-    if (this.clayKid === kid) return `${kid.def.name} lepi z plasteliny. Kliknij stolik do rysowania.`;
+    if (this.clayKid === kid) return `${kid.def.name} lepi z plasteliny. Kliknij plastelinę na stoliku w sali.`;
     return null;
   }
 
