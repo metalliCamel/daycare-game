@@ -38,7 +38,10 @@ export class TitleScene extends Phaser.Scene {
 
     title(this, 480, 330, 'Przedszkole\nHani', 130);
 
-    bigButton(this, 480, 640, 'Graj!', () => this.scene.start('Menu'), { speak: 'Graj!' });
+    bigButton(this, 480, 640, 'Graj!', () => {
+      this.scene.start('World');
+      this.scene.launch('Hud');
+    }, { speak: 'Graj!' });
 
     // Browsers only allow speech after the first click, so greet on first input.
     this.input.once('pointerdown', () => say('Cześć Haniu! Dzisiaj jesteś panią w przedszkolu.'));
