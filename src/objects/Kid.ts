@@ -4,34 +4,54 @@ import { ROOM_W, FLOOR_MIN_Y, FLOOR_MAX_Y, roomIndexAt } from '../lib/rooms';
 import type { EmojiKey } from '../lib/assets';
 import { FONT, inkHex } from '../lib/layout';
 
-export type Need = 'potty' | 'wash' | 'sad' | 'hungry' | null;
+export type Need = 'check' | 'potty' | 'wash' | 'sad' | 'hungry' | 'sick' | 'fight' | 'coat' | 'dress' | 'wish' | 'awake' | 'home' | null;
 
 export type KidDef = {
   id: string;
   name: string;
+  /** genitive: "dla Zosi", "mama Antka" */
+  gen: string;
+  /** accusative: "czeka na Zosię", "przyprowadza Antka" */
+  acc: string;
+  parentFem: boolean;
   key: EmojiKey;
+  parent: EmojiKey;
+  parentLabel: string;
   girl: boolean;
-  sandwich: EmojiKey[]; // fillings between two slices of bread
+  /** favourite fillings; each meal picks two */
+  likes: EmojiKey[];
 };
 
 export const KIDS: KidDef[] = [
-  { id: 'zosia', name: 'Zosia', key: 'kid_zosia', girl: true, sandwich: ['cheese', 'tomato'] },
-  { id: 'antek', name: 'Antek', key: 'kid_antek', girl: false, sandwich: ['ham', 'lettuce'] },
-  { id: 'ola', name: 'Ola', key: 'kid_ola', girl: true, sandwich: ['cheese', 'cucumber'] },
-  { id: 'franek', name: 'Franek', key: 'kid_franek', girl: false, sandwich: ['ham', 'cheese'] },
+  { id: 'zosia', name: 'Zosia', gen: 'Zosi', acc: 'Zosię', parentFem: true, key: 'kid_zosia', parent: 'parent_zosia', parentLabel: 'Mama Zosi', girl: true, likes: ['cheese', 'tomato', 'lettuce'] },
+  { id: 'antek', name: 'Antek', gen: 'Antka', acc: 'Antka', parentFem: false, key: 'kid_antek', parent: 'parent_antek', parentLabel: 'Tata Antka', girl: false, likes: ['ham', 'lettuce', 'egg'] },
+  { id: 'ola', name: 'Ola', gen: 'Oli', acc: 'Olę', parentFem: true, key: 'kid_ola', parent: 'parent_ola', parentLabel: 'Babcia Oli', girl: true, likes: ['cheese', 'cucumber', 'egg'] },
+  { id: 'franek', name: 'Franek', gen: 'Franka', acc: 'Franka', parentFem: false, key: 'kid_franek', parent: 'parent_franek', parentLabel: 'Tata Franka', girl: false, likes: ['ham', 'cheese', 'tomato'] },
+  { id: 'maja', name: 'Maja', gen: 'Mai', acc: 'Maję', parentFem: true, key: 'kid_maja', parent: 'parent_maja', parentLabel: 'Mama Mai', girl: true, likes: ['egg', 'tomato', 'cucumber'] },
+  { id: 'stas', name: 'Staś', gen: 'Stasia', acc: 'Stasia', parentFem: false, key: 'kid_stas', parent: 'parent_stas', parentLabel: 'Dziadek Stasia', girl: false, likes: ['ham', 'cucumber', 'lettuce'] },
 ];
 
+export const kidDef = (id: string) => KIDS.find((k) => k.id === id)!;
+
 const NEED_ICON: Record<Exclude<Need, null>, EmojiKey> = {
+  check: 'thermometer',
   potty: 'toilet',
   wash: 'soap',
   sad: 'cry',
   hungry: 'apple',
+  sick: 'sick',
+  fight: 'angry',
+  coat: 'coat',
+  dress: 'coat',
+  wish: 'swing' as EmojiKey,
+  awake: 'cry',
+  home: 'car',
 };
 
 /**
  * free      – wanders around its room
  * following – holds the teacher's hand
- * busy      – sitting on the potty, at the table, etc. (doesn't move by itself)
+ * busy      – doing something (potty, table, bed...) and doesn't move by itself
  */
 export type KidMode = 'free' | 'following' | 'busy';
 
@@ -39,18 +59,30 @@ export class Kid extends Walker {
   def: KidDef;
   need: Need = null;
   mode: KidMode = 'free';
+  present = false;
+  /** already counted during the playground head count */
+  counted = false;
+  /** extra info for the current need, e.g. which playground thing they want */
+  wish: string | null = null;
   private bubble: Phaser.GameObjects.Container;
   private bubbleIcon: Phaser.GameObjects.Image;
+  private badge: Phaser.GameObjects.Text;
+  private gear: Phaser.GameObjects.Container;
+  /** clothes currently worn (coat, cap, boots...) */
+  wearing: EmojiKey[] = [];
+  nameTag: Phaser.GameObjects.Text;
   private wanderTimer = Phaser.Math.Between(1000, 3000);
+  /** keep wandering inside this room index (null = the room it's in) */
+  homeRoom: number | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number, def: KidDef) {
     super(scene, x, y, def.key, 150, 230);
     this.def = def;
 
-    const nameTag = scene.add
+    this.nameTag = scene.add
       .text(0, 12, def.name, { fontFamily: FONT, fontSize: '28px', fontStyle: '800', color: inkHex })
       .setOrigin(0.5, 0);
-    this.add(nameTag);
+    this.add(this.nameTag);
 
     // Thought bubble above the head that shows what the child needs.
     const g = scene.add.graphics();
@@ -60,6 +92,17 @@ export class Kid extends Walker {
     this.bubble = scene.add.container(0, -230, [g, this.bubbleIcon]).setVisible(false);
     this.add(this.bubble);
     scene.tweens.add({ targets: this.bubble, y: -244, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // Clothes the child is wearing, shown as little icons on the body
+    this.gear = scene.add.container(0, 0);
+    this.add(this.gear);
+
+    // Small number shown above the head during the head count
+    this.badge = scene.add
+      .text(0, -150, '', { fontFamily: FONT, fontSize: '56px', fontStyle: '800', color: '#ffffff', stroke: inkHex, strokeThickness: 10 })
+      .setOrigin(0.5)
+      .setVisible(false);
+    this.add(this.badge);
 
     // Container hit areas are measured from the container's top-left corner
     // (x + width/2, y + height/2), so shift the box to sit over the child.
@@ -79,26 +122,60 @@ export class Kid extends Walker {
     return this.def.girl ? fem : masc;
   }
 
-  setNeed(need: Need) {
+  setNeed(need: Need, icon?: EmojiKey) {
     this.need = need;
     if (need) {
-      this.bubbleIcon.setTexture(NEED_ICON[need]);
+      this.bubbleIcon.setTexture(icon ?? NEED_ICON[need]);
       this.bubble.setVisible(true).setScale(0);
       this.scene.tweens.add({ targets: this.bubble, scale: 1, duration: 350, ease: 'Back.out' });
     } else {
       this.bubble.setVisible(false);
+      this.wish = null;
+    }
+  }
+
+  setWearing(keys: EmojiKey[]) {
+    this.wearing = [...keys];
+    this.gear.removeAll(true);
+    const spots: Record<string, [number, number, number]> = {
+      coat: [0, -28, 85], umbrella: [45, -175, 100], scarf: [0, -50, 55], gloves: [55, -35, 45],
+      cap: [0, -150, 80], sunglasses: [0, -98, 58], boots: [0, -5, 55],
+    };
+    keys.forEach((k, i) => {
+      const [x, y, size] = spots[k] ?? [40, -80 - i * 20, 60];
+      this.gear.add(this.scene.add.image(x, y, k).setDisplaySize(size, size));
+    });
+  }
+
+  setBadge(text: string | null) {
+    this.badge.setText(text ?? '').setVisible(!!text);
+    if (text) {
+      this.badge.setScale(0);
+      this.scene.tweens.add({ targets: this.badge, scale: 1, duration: 250, ease: 'Back.out' });
     }
   }
 
   needText(): string {
     const n = this.def.name;
     switch (this.need) {
+      case 'check': return `${this.adj('Przyszła', 'Przyszedł')} ${n}! Kliknij, żeby się przywitać.`;
       case 'potty': return `${n} musi iść do łazienki.`;
       case 'wash': return `${n} musi umyć rączki.`;
       case 'sad': return `${n} jest ${this.adj('smutna', 'smutny')}. Przynieś misia!`;
       case 'hungry': return `${n} jest ${this.adj('głodna', 'głodny')}.`;
+      case 'sick': return `${n} źle się czuje. Kliknij, żeby zmierzyć temperaturę.`;
+      case 'fight': return `${n} kłóci się o zabawkę.`;
+      case 'coat': return `${n} musi zdjąć kurtkę. Zaprowadź do wieszaka.`;
+      case 'dress': return `${n} musi się ubrać na dwór.`;
+      case 'wish': return `${n} chce się bawić: ${this.wishName()}. Zaprowadź tam!`;
+      case 'awake': return `${n} nie może zasnąć. Kliknij, żeby pogłaskać.`;
+      case 'home': return `${this.def.parentLabel} czeka na ${this.def.acc} w szatni. Najpierw kurtka!`;
       default: return `To jest ${n}.`;
     }
+  }
+
+  private wishName() {
+    return { swing: 'huśtawka', slide: 'zjeżdżalnia', sand: 'piaskownica' }[this.wish ?? ''] ?? 'zabawa';
   }
 
   /** Celebrate: jump + hearts. */
@@ -110,22 +187,40 @@ export class Kid extends Walker {
     }
   }
 
+  /** Hide/show the child (absent today, gone home...). */
+  setPresent(on: boolean) {
+    this.present = on;
+    this.setVisible(on).setActive(on);
+    if (on) this.setInteractive();
+    else this.disableInteractive();
+    if (!on) {
+      this.mode = 'busy';
+      this.stop();
+      this.setNeed(null);
+      this.setBadge(null);
+      this.setWearing([]);
+      this.homeRoom = null;
+    }
+  }
+
   update(dt: number, leader?: Walker) {
-    this.speed = this.mode === 'following' ? 420 : 230;
+    if (!this.present) return;
+    this.speed = this.mode === 'following' ? 420 : this.mode === 'busy' ? 330 : 230;
     if (this.mode === 'following' && leader) {
       // Stay just behind the teacher, holding her hand.
       const side = leader.sprite.flipX ? -1 : 1;
       const tx = leader.x + side * 95;
       const ty = leader.y + 8;
       if (Math.hypot(tx - this.x, ty - this.y) > 12) this.walkTo(tx, ty);
-    } else if (this.mode === 'free' && this.need === 'sad') {
-      // Sad kids stand still and wait for a cuddle.
+    } else if (this.mode === 'free' && (this.need === 'sad' || this.need === 'sick' || this.need === 'fight')) {
+      // Upset or poorly kids stand still and wait for help.
       if (this.moving) this.stop();
     } else if (this.mode === 'free') {
       this.wanderTimer -= dt * 1000;
       if (this.wanderTimer <= 0 && !this.moving) {
         this.wanderTimer = Phaser.Math.Between(2500, 6000);
-        const left = this.roomIndex * ROOM_W + 140;
+        const room = this.homeRoom ?? this.roomIndex;
+        const left = room * ROOM_W + 140;
         this.walkTo(
           Phaser.Math.Between(left, left + ROOM_W - 280),
           Phaser.Math.Between(FLOOR_MIN_Y + 20, FLOOR_MAX_Y - 10),

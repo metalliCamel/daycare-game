@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, FONT, inkHex } from '../lib/layout';
 import { ROOMS } from '../lib/rooms';
-import { bus, state } from '../lib/state';
+import { bus, state, save, persist } from '../lib/state';
+import { setMusic, isMusicOn, playDayMusic, sfx } from '../lib/sound';
 import { say } from '../lib/voice';
 
 function clockText(min: number) {
@@ -19,6 +20,8 @@ export class HudScene extends Phaser.Scene {
   private promptText!: Phaser.GameObjects.Text;
   private lastPrompt = '';
   private map!: Phaser.GameObjects.Container;
+  private shopBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
+  private musicBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
   private mapButtons: { bg: Phaser.GameObjects.Graphics; dot: Phaser.GameObjects.Arc; x: number }[] = [];
 
   constructor() {
@@ -30,7 +33,30 @@ export class HudScene extends Phaser.Scene {
     const sb = this.add.graphics();
     sb.fillStyle(0xffffff, 0.92).fillRoundedRect(20, 20, 220, 90, 40);
     this.add.image(75, 65, 'star').setDisplaySize(70, 70);
-    this.stars = this.add.text(125, 65, `${state.stars}`, { fontFamily: FONT, fontSize: '56px', fontStyle: '800', color: inkHex }).setOrigin(0, 0.5);
+    this.stars = this.add.text(125, 65, `${save.stars}`, { fontFamily: FONT, fontSize: '56px', fontStyle: '800', color: inkHex }).setOrigin(0, 0.5);
+
+    // Shop and music buttons next to the stars
+    const mkBtn = (x: number, label: string, speak: string, onClick: () => void) => {
+      const g = this.add.graphics();
+      g.fillStyle(0xffffff, 0.92).fillCircle(x, 65, 45);
+      const t = this.add.text(x, 65, label, { fontSize: '46px' }).setOrigin(0.5);
+      const z = this.add.zone(x, 65, 90, 90).setInteractive({ useHandCursor: true });
+      z.on('pointerover', () => say(speak));
+      z.on('pointerdown', () => {
+        sfx.click();
+        onClick();
+      });
+      return { g, t, z };
+    };
+    this.shopBtn = mkBtn(300, '🛍️', 'Sklepik', () => bus.emit('open-shop'));
+    const music = (this.musicBtn = mkBtn(400, isMusicOn() ? '🎵' : '🔇', 'Muzyka', () => {
+      const on = !isMusicOn();
+      setMusic(on);
+      save.music = on;
+      persist();
+      music.t.setText(on ? '🎵' : '🔇');
+      if (on) playDayMusic();
+    }));
 
     // Clock (top-right)
     const cb = this.add.graphics();
@@ -103,7 +129,14 @@ export class HudScene extends Phaser.Scene {
       say(t);
     };
 
-    const onMinigame = (on: boolean) => this.map.setVisible(!on);
+    const onMinigame = (on: boolean) => {
+      this.map.setVisible(!on);
+      for (const b of [this.shopBtn, this.musicBtn]) {
+        b.g.setVisible(!on);
+        b.t.setVisible(!on);
+        if (b.z.input) b.z.input.enabled = !on;
+      }
+    };
     bus.on('minigame', onMinigame);
     bus.on('stars', onStars);
     bus.on('clock', onClock);

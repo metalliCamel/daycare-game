@@ -6,6 +6,12 @@ import { WorldScene } from './scenes/WorldScene';
 import { SandwichScene } from './scenes/SandwichScene';
 import { PourScene } from './scenes/PourScene';
 import { HudScene } from './scenes/HudScene';
+import { HealthScene } from './scenes/HealthScene';
+import { DressScene } from './scenes/DressScene';
+import { ChoiceScene } from './scenes/ChoiceScene';
+import { CraftScene } from './scenes/CraftScene';
+import { ShopScene } from './scenes/ShopScene';
+import { SummaryScene } from './scenes/SummaryScene';
 
 const start = () => {
   const game = new Phaser.Game({
@@ -19,7 +25,11 @@ const start = () => {
       height: GAME_H,
     },
     // Order = draw order. The HUD is last so prompts show above the minigames.
-    scene: [BootScene, TitleScene, WorldScene, SandwichScene, PourScene, HudScene],
+    scene: [
+      BootScene, TitleScene, WorldScene,
+      SandwichScene, PourScene, HealthScene, DressScene, ChoiceScene, CraftScene, ShopScene, SummaryScene,
+      HudScene,
+    ],
   });
   // Handy for debugging from the browser console.
   (window as unknown as { game: Phaser.Game }).game = game;

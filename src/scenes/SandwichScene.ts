@@ -1,43 +1,56 @@
 import Phaser from 'phaser';
+import { Overlay } from './Overlay';
 import { GAME_W, GAME_H, FONT, inkHex } from '../lib/layout';
-import { KIDS } from '../objects/Kid';
-import { bus, addStars, prompt } from '../lib/state';
+import { kidDef } from '../objects/Kid';
+import { addStars, prompt } from '../lib/state';
 import { say } from '../lib/voice';
+import { sfx } from '../lib/sound';
 import type { EmojiKey } from '../lib/assets';
+import type { Order } from '../world/meals';
 
-const INGREDIENTS: { key: EmojiKey; name: string }[] = [
-  { key: 'bread', name: 'chleb' },
-  { key: 'cheese', name: 'ser' },
-  { key: 'ham', name: 'szynka' },
-  { key: 'tomato', name: 'pomidor' },
-  { key: 'cucumber', name: 'ogórek' },
-  { key: 'lettuce', name: 'sałata' },
+const INGREDIENTS: { key: EmojiKey; name: string; acc: string }[] = [
+  { key: 'bread', name: 'chleb', acc: 'chleb' },
+  { key: 'cheese', name: 'ser', acc: 'ser' },
+  { key: 'ham', name: 'szynka', acc: 'szynkę' },
+  { key: 'egg', name: 'jajko', acc: 'jajko' },
+  { key: 'tomato', name: 'pomidor', acc: 'pomidora' },
+  { key: 'cucumber', name: 'ogórek', acc: 'ogórka' },
+  { key: 'lettuce', name: 'sałata', acc: 'sałatę' },
 ];
-const nameOf = (k: EmojiKey) => INGREDIENTS.find((i) => i.key === k)!.name;
+const ing = (k: EmojiKey) => INGREDIENTS.find((i) => i.key === k)!;
+const CUTTABLE: EmojiKey[] = ['tomato', 'cucumber', 'egg'];
 
 const PLATE_X = 760;
 const PLATE_Y = 400;
 
-/** Drag ingredients onto the plate in the order shown on the child's card. */
-export class SandwichScene extends Phaser.Scene {
-  private kidIndex = 0;
+/** First cut the vegetables, then build each child's sandwich from their order card. */
+export class SandwichScene extends Overlay {
+  private orders: Order[] = [];
+  private orderIdx = 0;
   private layer = 0;
   private recipe: EmojiKey[] = [];
   private stack: Phaser.GameObjects.Image[] = [];
-  private card!: Phaser.GameObjects.Container;
-  private bowls: Map<EmojiKey, Phaser.GameObjects.Container> = new Map();
+  private card?: Phaser.GameObjects.Container;
+  private bowls = new Map<EmojiKey, Phaser.GameObjects.Container>();
   private hintTimer?: Phaser.Time.TimerEvent;
   private done: Phaser.GameObjects.Image[] = [];
+  private cutQueue: EmojiKey[] = [];
+  private cutLayer?: Phaser.GameObjects.Container;
 
   constructor() {
     super('Sandwich');
   }
 
-  create() {
-    this.kidIndex = 0;
+  init(data: { orders: Order[] }) {
+    super.init();
+    this.orders = data.orders;
+    this.orderIdx = 0;
     this.done = [];
     this.bowls.clear();
+    this.card = undefined;
+  }
 
+  create() {
     // Close-up of the kitchen counter
     const g = this.add.graphics();
     g.fillStyle(0xfff3b0, 1).fillRect(0, 0, GAME_W, GAME_H);
@@ -45,42 +58,114 @@ export class SandwichScene extends Phaser.Scene {
     g.fillStyle(0xe8d8b8, 1).fillRect(0, 300, GAME_W, GAME_H - 300);
     g.fillStyle(0xd8c49c, 1);
     for (let x = 0; x < GAME_W; x += 160) g.fillRect(x, 300, 4, GAME_H);
-
-    // Cutting board + plate
     g.fillStyle(0xc68c5c, 1).fillRoundedRect(PLATE_X - 230, PLATE_Y - 90, 460, 210, 40);
+
+    // Finished sandwiches go onto the tray on the right
+    g.fillStyle(0xb5835a, 1).fillRoundedRect(1180, 300, 380, 260, 30);
+    this.add.text(1370, 590, 'Gotowe', { fontFamily: FONT, fontSize: '36px', fontStyle: '800', color: inkHex }).setOrigin(0.5);
+    this.closeButton(false);
+
+    const needed = new Set(this.orders.flatMap((o) => o.fillings));
+    this.cutQueue = CUTTABLE.filter((k) => needed.has(k));
+    if (this.cutQueue.length) this.nextCut();
+    else this.startBuilding();
+  }
+
+  // ---------- Cutting ----------
+
+  private nextCut() {
+    this.cutLayer?.destroy();
+    const key = this.cutQueue.shift();
+    if (!key) return this.startBuilding();
+    const c = this.add.container(PLATE_X, PLATE_Y);
+    this.cutLayer = c;
+    const veg = this.add.image(0, 0, key).setDisplaySize(330, 330);
+    c.add(veg);
+    const lines = [-75, 0, 75].map((dx) => {
+      const l = this.add.graphics();
+      l.lineStyle(6, 0x4a3a5c, 0.7);
+      for (let y = -130; y < 130; y += 26) l.lineBetween(dx, y, dx, y + 13);
+      c.add(l);
+      return { dx, cut: false, g: l };
+    });
+    const knife = this.add.image(0, 0, 'knife').setDisplaySize(150, 150).setVisible(false).setDepth(200);
+    prompt(`Pokrój ${ing(key).acc}! Przytrzymaj przycisk i przeciągnij nożem w dół po kreskach.`);
+
+    let lastX: number | null = null;
+    const onMove = (p: Phaser.Input.Pointer) => {
+      knife.setPosition(p.x + 40, p.y - 40).setVisible(true);
+      if (!p.isDown) {
+        lastX = null;
+        return;
+      }
+      const lx = p.x - PLATE_X;
+      const ly = p.y - PLATE_Y;
+      if (Math.abs(ly) < 170) {
+        for (const line of lines) {
+          // A cut counts when the knife passes over the line (or moves along it)
+          const crossed = lastX !== null && (lastX - line.dx) * (lx - line.dx) <= 0;
+          const along = Math.abs(lx - line.dx) < 22 && p.velocity.y > 2;
+          if (!line.cut && (crossed || along)) {
+            line.cut = true;
+            sfx.chop();
+            line.g.clear();
+            line.g.fillStyle(0xc68c5c, 1).fillRect(line.dx - 5, -170, 10, 340);
+            this.tweens.add({ targets: c, x: PLATE_X + Phaser.Math.Between(-6, 6), duration: 50, yoyo: true });
+          }
+        }
+      }
+      lastX = lx;
+      if (lines.every((l) => l.cut)) {
+        this.input.off('pointermove', onMove);
+        knife.destroy();
+        this.slices(key, c);
+      }
+    };
+    this.input.on('pointermove', onMove);
+  }
+
+  private slices(key: EmojiKey, c: Phaser.GameObjects.Container) {
+    c.removeAll(true);
+    addStars();
+    say({ tomato: 'Pomidor pokrojony!', cucumber: 'Ogórek pokrojony!', egg: 'Jajko pokrojone!' }[key as string] ?? 'Pokrojone!');
+    for (let i = 0; i < 4; i++) {
+      const s = this.add.image(0, 0, key).setDisplaySize(170, 170).setScale(0.3, 0.6).setAngle(-10);
+      c.add(s);
+      this.tweens.add({ targets: s, x: -150 + i * 100, duration: 400, ease: 'Back.out' });
+    }
+    this.time.delayedCall(1300, () => this.nextCut());
+  }
+
+  // ---------- Building ----------
+
+  private startBuilding() {
+    this.cutLayer?.destroy();
+    const g = this.add.graphics();
     g.fillStyle(0xffffff, 1).fillEllipse(PLATE_X, PLATE_Y + 20, 320, 120);
     g.lineStyle(6, 0xe0e0e0, 1).strokeEllipse(PLATE_X, PLATE_Y + 20, 250, 80);
 
-    // Finished sandwiches go onto the tray on the right
-    g.fillStyle(0xb5835a, 1).fillRoundedRect(1180, 300, 360, 230, 30);
-    this.add.text(1360, 560, 'Gotowe', { fontFamily: FONT, fontSize: '36px', fontStyle: '800', color: inkHex }).setOrigin(0.5);
-
-    // Ingredient bowls along the bottom
-    INGREDIENTS.forEach((ing, i) => {
-      const x = 360 + i * 185;
-      const y = 660;
+    INGREDIENTS.forEach((it, i) => {
+      const x = 300 + i * 165;
+      const y = 670;
       const bowl = this.add.graphics();
-      bowl.fillStyle(0xffffff, 1).fillEllipse(0, 20, 150, 70);
-      bowl.fillStyle(0x9fd3f5, 1).fillRoundedRect(-75, 20, 150, 50, { tl: 0, tr: 0, bl: 40, br: 40 });
-      const icon = this.add.image(0, -15, ing.key).setDisplaySize(105, 105);
-      const c = this.add.container(x, y, [bowl, icon]).setSize(160, 160).setInteractive({ useHandCursor: true, draggable: false });
-      c.on('pointerover', () => say(ing.name));
-      c.on('pointerdown', (p: Phaser.Input.Pointer) => this.grab(ing.key, p));
-      this.bowls.set(ing.key, c);
+      bowl.fillStyle(0xffffff, 1).fillEllipse(0, 20, 140, 66);
+      bowl.fillStyle(0x9fd3f5, 1).fillRoundedRect(-70, 20, 140, 48, { tl: 0, tr: 0, bl: 38, br: 38 });
+      const icon = this.add.image(0, -15, it.key).setDisplaySize(100, 100);
+      const c = this.add.container(x, y, [bowl, icon]).setSize(150, 160).setInteractive({ useHandCursor: true });
+      c.on('pointerover', () => say(it.name));
+      c.on('pointerdown', (p: Phaser.Input.Pointer) => this.grab(it.key, p));
+      this.bowls.set(it.key, c);
     });
-
-    const back = this.add.text(GAME_W - 80, 190, '✖', { fontSize: '56px', color: inkHex }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    back.on('pointerdown', () => this.close(false));
-
-    this.nextKid();
+    this.nextOrder();
   }
 
-  private nextKid() {
+  private nextOrder() {
     this.stack.forEach((s) => s.destroy());
     this.stack = [];
     this.layer = 0;
-    const kid = KIDS[this.kidIndex];
-    this.recipe = ['bread', ...kid.sandwich, 'bread'];
+    const order = this.orders[this.orderIdx];
+    const kid = kidDef(order.kidId);
+    this.recipe = ['bread', ...order.fillings, 'bread'];
 
     // Order card: the child's face and the layers from bottom to top
     this.card?.destroy();
@@ -91,19 +176,18 @@ export class SandwichScene extends Phaser.Scene {
     const name = this.add.text(0, -60, kid.name, { fontFamily: FONT, fontSize: '40px', fontStyle: '800', color: inkHex }).setOrigin(0.5);
     const parts: Phaser.GameObjects.GameObject[] = [bg, face, name];
     [...this.recipe].reverse().forEach((k, i) => {
-      parts.push(this.add.image(0, 0 + i * 45, k).setDisplaySize(70, 70).setName(`step-${this.recipe.length - 1 - i}`));
+      parts.push(this.add.image(0, i * 45, k).setDisplaySize(70, 70).setName(`step-${this.recipe.length - 1 - i}`));
     });
     this.card = this.add.container(190, 370, parts);
     this.refreshCard();
 
-    const who = { zosia: 'Zosi', antek: 'Antka', ola: 'Oli', franek: 'Franka' }[kid.id] ?? kid.name;
-    prompt(`Zrób kanapkę dla ${who}. Połóż na talerzu: ${this.recipe.map(nameOf).join(', ')}.`);
+    prompt(`Kanapka dla ${kid.gen}. Połóż na talerzu: ${this.recipe.map((k) => ing(k).acc).join(', ')}.`);
     this.armHint();
   }
 
   private refreshCard() {
     this.recipe.forEach((_, i) => {
-      const img = this.card.getByName(`step-${i}`) as Phaser.GameObjects.Image;
+      const img = this.card!.getByName(`step-${i}`) as Phaser.GameObjects.Image;
       if (!img) return;
       img.setAlpha(i < this.layer ? 0.25 : 1);
       this.tweens.killTweensOf(img);
@@ -116,8 +200,8 @@ export class SandwichScene extends Phaser.Scene {
     this.hintTimer?.remove();
     this.hintTimer = this.time.delayedCall(6000, () => {
       const bowl = this.bowls.get(this.recipe[this.layer]);
-      if (bowl) this.tweens.add({ targets: bowl, y: bowl.y - 30, duration: 250, yoyo: true, repeat: 3 });
-      say(`Teraz ${nameOf(this.recipe[this.layer])}.`);
+      if (bowl) this.tweens.add({ targets: bowl, y: 640, duration: 250, yoyo: true, repeat: 3, onComplete: () => bowl.setY(670) });
+      say(`Teraz ${ing(this.recipe[this.layer]).acc}.`);
       this.armHint();
     });
   }
@@ -136,32 +220,30 @@ export class SandwichScene extends Phaser.Scene {
 
   private drop(piece: Phaser.GameObjects.Image, key: EmojiKey) {
     const onPlate = Phaser.Math.Distance.Between(piece.x, piece.y, PLATE_X, PLATE_Y) < 220;
-    if (!onPlate) {
+    if (!onPlate || this.layer >= this.recipe.length) {
       this.tweens.add({ targets: piece, alpha: 0, scale: 0, duration: 200, onComplete: () => piece.destroy() });
       return;
     }
     if (key !== this.recipe[this.layer]) {
-      // Gentle "not this one" wobble, then back to the bowl.
       const bowl = this.bowls.get(key)!;
-      say(`Hmm, teraz potrzebujemy: ${nameOf(this.recipe[this.layer])}.`);
+      sfx.wrong();
+      say(`Hmm, teraz potrzebujemy: ${ing(this.recipe[this.layer]).name}.`);
       this.tweens.add({
         targets: piece, angle: { from: -15, to: 15 }, duration: 80, yoyo: true, repeat: 2,
         onComplete: () => this.tweens.add({ targets: piece, x: bowl.x, y: bowl.y, scale: 0, duration: 350, onComplete: () => piece.destroy() }),
       });
       return;
     }
-
-    // Snap onto the stack. Bread is drawn flatter so it looks like a slice.
     const y = PLATE_Y - this.layer * 34;
     const flat = key === 'bread' ? 0.55 : 0.75;
     this.tweens.add({ targets: piece, x: PLATE_X, y, scaleX: 150 / 256, scaleY: (150 / 256) * flat, duration: 160, ease: 'Back.out' });
     piece.setDepth(10 + this.layer);
     this.stack.push(piece);
     this.layer++;
-    say(nameOf(key));
+    sfx.pop();
+    say(ing(key).name);
     this.refreshCard();
     this.armHint();
-
     if (this.layer === this.recipe.length) this.finishSandwich();
   }
 
@@ -177,28 +259,19 @@ export class SandwichScene extends Phaser.Scene {
       this.done.push(s);
       say('Pyszna kanapka!');
       this.tweens.add({
-        targets: s, x: 1270 + (slot % 2) * 180, y: 370 + Math.floor(slot / 2) * 100, scale: 110 / 256,
+        targets: s, x: 1250 + (slot % 3) * 120, y: 370 + Math.floor(slot / 3) * 110, scale: 100 / 256,
         delay: 500, duration: 600, ease: 'Quad.inOut',
         onComplete: () => {
-          this.kidIndex++;
-          if (this.kidIndex < KIDS.length) this.nextKid();
-          else this.allDone();
+          this.orderIdx++;
+          if (this.orderIdx < this.orders.length) this.nextOrder();
+          else this.bravo('Wszystkie kanapki gotowe!', () => this.close(true), 170);
         },
       });
     });
   }
 
-  private allDone() {
-    const t = this.add
-      .text(GAME_W / 2, 170, 'Brawo! Wszystkie kanapki gotowe!', { fontFamily: FONT, fontSize: '72px', fontStyle: '800', color: inkHex })
-      .setOrigin(0.5).setScale(0);
-    this.tweens.add({ targets: t, scale: 1, duration: 400, ease: 'Back.out' });
-    this.time.delayedCall(2200, () => this.close(true));
-  }
-
-  private close(finished: boolean) {
+  protected close(result: unknown) {
     this.hintTimer?.remove();
-    this.scene.stop();
-    bus.emit('minigame-done', finished ? 'Sandwich' : null);
+    super.close(result);
   }
 }

@@ -1,8 +1,11 @@
 import Phaser from 'phaser';
+import { Overlay } from './Overlay';
 import { GAME_W, GAME_H, FONT, inkHex } from '../lib/layout';
-import { KIDS } from '../objects/Kid';
-import { bus, addStars, prompt } from '../lib/state';
+import { kidDef } from '../objects/Kid';
+import { addStars, prompt } from '../lib/state';
 import { say } from '../lib/voice';
+import { sfx } from '../lib/sound';
+import type { Drink } from '../world/meals';
 
 const CUP_W = 150;
 const CUP_H = 220;
@@ -10,8 +13,11 @@ const CUP_Y = 600; // bottom of the cups
 const LINE = 0.8; // target fill level
 const GOOD_MIN = 0.65;
 
-/** Hold the mouse button (or space) to pour milk. Stop at the line! */
-export class PourScene extends Phaser.Scene {
+/** Hold the mouse button (or space) to pour a drink. Stop at the line! */
+export class PourScene extends Overlay {
+  private kids: string[] = [];
+  private drink: Drink = { key: 'milk', name: 'mleko', color: 0xfffdf6 };
+  private pourSfx = 0;
   private cup = 0;
   private fill = 0;
   private pouring = false;
@@ -26,6 +32,12 @@ export class PourScene extends Phaser.Scene {
     super('Pour');
   }
 
+  init(data: { kids: string[]; drink: Drink }) {
+    super.init();
+    this.kids = data.kids;
+    this.drink = data.drink;
+  }
+
   create() {
     this.cup = 0;
     this.fill = 0;
@@ -37,8 +49,10 @@ export class PourScene extends Phaser.Scene {
     g.fillStyle(0xe7a96b, 1).fillRect(0, CUP_Y, GAME_W, 40);
     g.fillStyle(0xcf8f52, 1).fillRect(0, CUP_Y + 40, GAME_W, GAME_H - CUP_Y - 40);
 
-    this.cupX = KIDS.map((_, i) => 380 + i * 280);
-    KIDS.forEach((kid, i) => {
+    const n = this.kids.length;
+    const gap = n > 4 ? 225 : 280;
+    this.cupX = this.kids.map((_, i) => GAME_W / 2 + (i - (n - 1) / 2) * gap + 60);
+    this.kids.map(kidDef).forEach((kid, i) => {
       const x = this.cupX[i];
       const f = this.add.graphics();
       this.fills.push(f);
@@ -52,13 +66,12 @@ export class PourScene extends Phaser.Scene {
       this.add.image(x, CUP_Y + 90, kid.key).setDisplaySize(90, 90);
     });
 
-    this.stream = this.add.rectangle(0, 0, 18, 10, 0xffffff).setOrigin(0.5, 0).setVisible(false);
+    this.stream = this.add.rectangle(0, 0, 18, 10, this.drink.color).setOrigin(0.5, 0).setVisible(false).setStrokeStyle(2, 0xd8c8a8, 0.6);
     this.jug = this.add.image(0, 210, 'teapot').setDisplaySize(200, 200).setDepth(10);
     this.moveJug(false);
 
-    this.add.text(GAME_W / 2, 65, 'Trzymaj przycisk, żeby nalać mleko', { fontFamily: FONT, fontSize: '44px', fontStyle: '800', color: inkHex }).setOrigin(0.5);
-    const back = this.add.text(GAME_W - 80, 190, '✖', { fontSize: '56px', color: inkHex }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    back.on('pointerdown', () => this.close(false));
+    this.add.text(GAME_W / 2, 65, `Trzymaj przycisk, żeby nalać ${this.drink.name}`, { fontFamily: FONT, fontSize: '44px', fontStyle: '800', color: inkHex }).setOrigin(0.5);
+    this.closeButton(false);
 
     this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: unknown[]) => { if (!over.length) this.pouring = true; });
     this.input.on('pointerup', () => this.stopPour());
@@ -66,7 +79,7 @@ export class PourScene extends Phaser.Scene {
     this.space.on('down', () => (this.pouring = true));
     this.space.on('up', () => this.stopPour());
 
-    prompt('Trzymaj przycisk myszki i nalej mleko do czerwonej kreski. Puść w porę!');
+    prompt(`Trzymaj przycisk myszki i nalej ${this.drink.name} do czerwonej kreski. Puść w porę!`);
   }
 
   private moveJug(animate = true) {
@@ -80,7 +93,7 @@ export class PourScene extends Phaser.Scene {
     const h = Math.min(level, 1) * (CUP_H - 10);
     const f = this.fills[i];
     f.clear();
-    f.fillStyle(0xfffdf6, 1).fillRoundedRect(x - CUP_W / 2 + 6, CUP_Y - 5 - h, CUP_W - 12, h, { tl: 0, tr: 0, bl: 26, br: 26 });
+    f.fillStyle(this.drink.color, 1).fillRoundedRect(x - CUP_W / 2 + 6, CUP_Y - 5 - h, CUP_W - 12, h, { tl: 0, tr: 0, bl: 26, br: 26 });
   }
 
   update(_t: number, deltaMs: number) {
@@ -96,6 +109,11 @@ export class PourScene extends Phaser.Scene {
       const top = this.jug.y + 40;
       this.stream.setPosition(x, top).setSize(18, CUP_Y - top - 10);
       this.fill += dt * 0.32;
+      this.pourSfx -= deltaMs;
+      if (this.pourSfx <= 0) {
+        this.pourSfx = 220;
+        sfx.pour();
+      }
       this.drawFill(this.cup, this.fill);
       if (this.fill > 1.05) this.spill();
     }
@@ -125,7 +143,8 @@ export class PourScene extends Phaser.Scene {
     prompt('Ojej, wylało się! Pocieraj gąbką kałużę, żeby ją wytrzeć.');
 
     const x = this.cupX[this.cup];
-    const puddle = this.add.ellipse(x + 40, CUP_Y + 15, 260, 50, 0xffffff, 0.95).setDepth(5);
+    sfx.splash();
+    const puddle = this.add.ellipse(x + 40, CUP_Y + 15, 260, 50, this.drink.color, 0.95).setStrokeStyle(3, 0xd8c8a8).setDepth(5);
     const sponge = this.add.image(x + 230, CUP_Y - 60, 'sponge').setDisplaySize(130, 130).setDepth(20).setInteractive({ useHandCursor: true, draggable: true });
     this.input.setDraggable(sponge);
     let dirt = 1;
@@ -152,18 +171,11 @@ export class PourScene extends Phaser.Scene {
   private nextCup() {
     this.cup++;
     this.fill = 0;
-    if (this.cup >= KIDS.length) {
+    if (this.cup >= this.kids.length) {
       this.locked = true;
-      const t = this.add.text(GAME_W / 2, 250, 'Brawo! Picie gotowe!', { fontFamily: FONT, fontSize: '80px', fontStyle: '800', color: inkHex }).setOrigin(0.5).setScale(0);
-      this.tweens.add({ targets: t, scale: 1, duration: 400, ease: 'Back.out' });
-      this.time.delayedCall(2000, () => this.close(true));
+      this.bravo('Brawo! Picie gotowe!', () => this.close(true), 250);
     } else {
       this.moveJug();
     }
-  }
-
-  private close(finished: boolean) {
-    this.scene.stop();
-    bus.emit('minigame-done', finished ? 'Pour' : null);
   }
 }

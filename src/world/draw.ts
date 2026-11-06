@@ -4,6 +4,9 @@ import type { EmojiKey } from '../lib/assets';
 
 const H = 900;
 
+/** x offsets of the six dining seats inside the dining room */
+export const DINING_SEATS = [380, 550, 720, 890, 1060, 1230];
+
 function darken(c: number, f = 0.85) {
   const col = Phaser.Display.Color.IntegerToColor(c);
   return Phaser.Display.Color.GetColor(col.red * f, col.green * f, col.blue * f);
@@ -71,17 +74,14 @@ function decorate(scene: Phaser.Scene, g: Phaser.GameObjects.Graphics) {
   for (let x = d + 20; x < d + ROOM_W - 140; x += 70) g.fillRoundedRect(x, 450, 30, 130, 10);
   g.fillRect(d, 480, ROOM_W - 140, 18).fillRect(d, 540, ROOM_W - 140, 18);
   prop(scene, 'tree', d + 260, 640, 360);
-  prop(scene, 'slide', d + 800, 700, 280);
-  prop(scene, 'ball', d + 520, 800, 80);
-  prop(scene, 'bucket', d + 1150, 830, 90);
+
 
   // Cloakroom
   const s = x0('szatnia');
-  g.fillStyle(0xb5835a, 1).fillRect(s + 220, 250, 900, 26);
-  ['coat', 'coat', 'coat', 'coat'].forEach((k, i) => prop(scene, k as EmojiKey, s + 330 + i * 220, 440, 150, -80));
-  g.fillStyle(0xc68c5c, 1).fillRoundedRect(s + 220, 500, 900, 60, 14);
-  prop(scene, 'plant', s + 1380, 640, 200);
-  windowAt(g, s + 1260, 220);
+  g.fillStyle(0xb5835a, 1).fillRect(s + 180, 250, 1000, 26);
+  g.fillStyle(0xc68c5c, 1).fillRoundedRect(s + 180, 500, 1000, 60, 14);
+  prop(scene, 'plant', s + 1420, 640, 180);
+  windowAt(g, s + 1260, 220, 200, 150);
 
   // Playroom
   const p = x0('sala');
@@ -89,22 +89,20 @@ function decorate(scene: Phaser.Scene, g: Phaser.GameObjects.Graphics) {
   prop(scene, 'books', p + 230, 305, 110, -80);
   prop(scene, 'books', p + 370, 305, 110, -80);
   prop(scene, 'palette', p + 300, 185, 100, -80);
-  prop(scene, 'picture', p + 760, 380, 180, -80);
   windowAt(g, p + 980, 200);
   prop(scene, 'couch', p + 1250, 650, 300);
-  prop(scene, 'blocks', p + 560, 820, 110);
-  prop(scene, 'puzzle', p + 900, 790, 100);
-  prop(scene, 'ball', p + 360, 760, 80);
+  prop(scene, 'blocks', p + 1450, 820, 100);
+  prop(scene, 'puzzle', p + 1080, 840, 90);
 
   // Dining room: table is drawn in front of seated kids (depth 650)
   const j = x0('jadalnia');
-  windowAt(g, j + 200, 200);
-  windowAt(g, j + 1180, 200);
+  windowAt(g, j + 340, 180, 200, 150);
+  windowAt(g, j + 1060, 180, 200, 150);
   const t = scene.add.graphics().setDepth(650);
-  t.fillStyle(0xe7a96b, 1).fillRoundedRect(j + 420, 560, 760, 40, 12);
-  t.fillStyle(0xcf8f52, 1).fillRect(j + 440, 600, 720, 30);
-  t.fillStyle(0xb5835a, 1).fillRect(j + 470, 630, 30, 120).fillRect(j + 1100, 630, 30, 120);
-  for (let i = 0; i < 4; i++) prop(scene, 'chair', j + 520 + i * 190, 610, 170, 560);
+  t.fillStyle(0xe7a96b, 1).fillRoundedRect(j + 290, 560, 1020, 40, 12);
+  t.fillStyle(0xcf8f52, 1).fillRect(j + 310, 600, 980, 30);
+  t.fillStyle(0xb5835a, 1).fillRect(j + 340, 630, 30, 120).fillRect(j + 1230, 630, 30, 120);
+  for (let i = 0; i < 6; i++) prop(scene, 'chair', DINING_SEATS[i] + j, 610, 160, 560);
 
   // Kitchen: counter with cabinets, fridge
   const k = x0('kuchnia');
@@ -134,8 +132,7 @@ function decorate(scene: Phaser.Scene, g: Phaser.GameObjects.Graphics) {
 
   // Bedroom
   const b = x0('sypialnia');
-  windowAt(g, b + 1100, 180, 240, 180, true);
-  scene.add.circle(b + 1160, 240, 30, 0xfff3b0).setDepth(-80);
-  for (let i = 0; i < 4; i++) prop(scene, 'bed', b + 260 + i * 260, 760, 240);
-  prop(scene, 'plant', b + 1450, 650, 180);
+  windowAt(g, b + 680, 160, 240, 160, true);
+  scene.add.circle(b + 740, 215, 28, 0xfff3b0).setDepth(-80);
+  prop(scene, 'plant', b + 1500, 650, 160);
 }

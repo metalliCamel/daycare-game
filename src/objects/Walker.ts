@@ -7,6 +7,8 @@ export class Walker extends Phaser.GameObjects.Container {
   speed: number;
   target: { x: number; y: number } | null = null;
   onArrive: (() => void) | null = null;
+  /** when set, keeps this draw depth instead of sorting by y (e.g. lying in bed) */
+  fixedDepth: number | null = null;
   private walkT = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, key: string, size: number, speed: number) {
@@ -73,7 +75,7 @@ export class Walker extends Phaser.GameObjects.Container {
       }
     }
     this.bob(dt, moved);
-    this.setDepth(this.y);
+    this.setDepth(this.fixedDepth ?? this.y);
   }
 
   private bob(dt: number, moving: boolean) {
