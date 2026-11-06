@@ -237,6 +237,13 @@ export class PlayCorner implements Module {
     say(text);
   }
 
+  waiting(kid: Kid): string | null {
+    for (const sp of this.spots.values()) {
+      if (sp.busy === kid && sp.id !== 'draw') return `${kid.def.name} czeka przy zabawce: ${PLAY[sp.id].name}. Kliknij zabawkę, żeby się pobawić.`;
+    }
+    return null;
+  }
+
   onKidClick(kid: Kid): boolean {
     // Clicking a child who is playing = keep playing with them
     for (const s of this.spots.values()) {

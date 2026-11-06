@@ -22,6 +22,8 @@ export type Item = { id: 'teddy' | 'tray'; img: Phaser.GameObjects.Image; home: 
 export interface Module {
   onKidClick?(kid: Kid): boolean;
   update?(dt: number): void;
+  /** If this module is keeping a child busy, say what Hania should do. */
+  waiting?(kid: Kid): string | null;
 }
 
 const CLOCK_SPEED = 1.5; // game minutes per real second (free time only)
@@ -275,6 +277,34 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
+  /** What a busy child is waiting for (toilet flush, a game...), if anything. */
+  waitingText(kid: Kid): string | null {
+    if (kid.mode !== 'busy') return null;
+    for (const m of this.modules) {
+      const t = m.waiting?.(kid);
+      if (t) return t;
+    }
+    return null;
+  }
+
+  private stuckMs = new Map<Kid, number>();
+  /**
+   * Safety net: a child who is "busy" but standing still, with nothing to do
+   * and no module waiting on them, goes back to free play so the day can go on.
+   */
+  private releaseStuck(deltaMs: number) {
+    for (const kid of this.presentKids) {
+      const stuck = kid.mode === 'busy' && !kid.moving && !this.waitingText(kid) && !kid.need;
+      const t = stuck ? (this.stuckMs.get(kid) ?? 0) + deltaMs : 0;
+      this.stuckMs.set(kid, t);
+      if (t > 8000) {
+        kid.mode = 'free';
+        kid.fixedDepth = null;
+        this.stuckMs.set(kid, 0);
+      }
+    }
+  }
+
   private letGoHinted = false;
   /** The first time, explain how to let go of a child's hand. */
   private hintLetGo() {
@@ -351,7 +381,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Which rooms have a child (or parent) that needs attention, for the HUD map
-    const rooms = new Set(this.presentKids.filter((kid) => kid.need).map((kid) => kid.roomIndex));
+    const rooms = new Set(this.presentKids.filter((kid) => kid.need || this.waitingText(kid)).map((kid) => kid.roomIndex));
     for (const ri of this.cloak.waitingRooms()) rooms.add(ri);
     bus.emit('needs', [...rooms]);
 
@@ -378,9 +408,12 @@ export class WorldScene extends Phaser.Scene {
         this.nagTimer -= deltaMs;
         if (this.nagTimer <= 0) {
           this.nagTimer = 15000;
-          const kid = this.presentKids.find((c) => c.need);
-          if (kid) prompt(`Zaraz następne zajęcie, ale najpierw pomóż: ${kid.needText()}`);
+          const busy = this.presentKids.find((c) => this.waitingText(c));
+          const needy = this.presentKids.find((c) => c.need);
+          if (busy) prompt(`Zaraz następne zajęcie, ale najpierw: ${this.waitingText(busy)}`);
+          else if (needy) prompt(`Zaraz następne zajęcie, ale najpierw pomóż: ${needy.needText()}`);
         }
+        this.releaseStuck(deltaMs);
       }
     } else {
       state.minutes += dt * CLOCK_SPEED;

@@ -152,6 +152,13 @@ export class Bathroom implements Module {
     }, true);
   }
 
+  waiting(kid: Kid): string | null {
+    const t = this.toilets.find((x) => x.kid === kid);
+    if (t) return t.flushReady ? `${kid.def.name} czeka w łazience. Kliknij niebieski przycisk i spłucz wodę!` : `${kid.def.name} jest w toalecie, zaraz skończy.`;
+    if (kid.need === 'wash') return `${kid.def.name} myje rączki. Kliknij bańki mydlane w łazience.`;
+    return null;
+  }
+
   onKidClick(kid: Kid): boolean {
     // Clicking the child sitting on the toilet works too
     const t = this.toilets.find((x) => x.kid === kid);

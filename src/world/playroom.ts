@@ -150,7 +150,10 @@ export class Playroom implements Module {
   }
 
   openCraft(after?: (drew: boolean) => void) {
-    if (state.phase !== 'free') return prompt('Porysujemy później, teraz mamy inne zajęcie.');
+    if (state.phase !== 'free') {
+      after?.(false);
+      return prompt('Porysujemy później, teraz mamy inne zajęcie.');
+    }
     const idx = save.drawings.length % PICTURES.length;
     this.w.openScene<string | null>('Craft', { picture: idx }, (result) => {
       if (!result) {
