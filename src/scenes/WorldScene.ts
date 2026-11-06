@@ -50,8 +50,13 @@ export class WorldScene extends Phaser.Scene {
 
     const sala = roomX('sala');
     this.teacher = new Walker(this, sala + 300, 760, 'teacher', 210, 540);
-    this.teacher.setInteractive(new Phaser.Geom.Rectangle(-80, -200, 160, 210), Phaser.Geom.Rectangle.Contains);
-    this.teacher.on('pointerdown', () => this.letGo());
+    this.teacher.setInteractive(new Phaser.Geom.Rectangle(-50, -190, 100, 170), Phaser.Geom.Rectangle.Contains);
+    this.teacher.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      // Kids always win over the teacher when both are under the pointer.
+      const kid = this.input.hitTestPointer(p).find((o): o is Kid => o instanceof Kid);
+      if (kid) this.clickKid(kid);
+      else this.letGo();
+    });
     this.cameras.main.startFollow(this.teacher, true, 0.08, 0);
 
     KIDS.forEach((def, i) => {
@@ -144,6 +149,8 @@ export class WorldScene extends Phaser.Scene {
     this.teacher.walkTo(item.img.x, item.img.y + 80, () => {
       if (this.carrying) this.dropItem();
       this.carrying = item;
+      // While carried, clicks go to whatever is underneath (e.g. the sad child).
+      item.img.disableInteractive();
       say(item.id === 'teddy' ? 'Mam misia!' : 'Mam tacę!');
     });
   }
@@ -152,6 +159,7 @@ export class WorldScene extends Phaser.Scene {
     const item = this.carrying;
     if (!item) return;
     this.carrying = null;
+    item.img.setInteractive({ useHandCursor: true });
     if (item.id === 'tray') {
       // The tray can only go on the table, so it goes back to the counter.
       this.tweens.add({ targets: item.img, x: item.home.x, y: item.home.y, duration: 400 });
@@ -164,17 +172,17 @@ export class WorldScene extends Phaser.Scene {
   // ---------- Kids ----------
 
   private clickKid(kid: Kid) {
+    // Give the teddy to a sad child (checked first, so it works even when holding their hand)
+    if (this.carrying?.id === 'teddy' && kid.need === 'sad' && kid.mode !== 'busy') {
+      this.teacher.walkTo(kid.x + 110, kid.y + 5, () => this.giveTeddy(kid));
+      return;
+    }
     if (this.holding === kid) {
       this.letGo();
       return;
     }
     if (kid.mode === 'busy') {
       say(kid.needText());
-      return;
-    }
-    // Give the teddy to a sad child
-    if (this.carrying?.id === 'teddy' && kid.need === 'sad') {
-      this.teacher.walkTo(kid.x + 110, kid.y + 5, () => this.giveTeddy(kid));
       return;
     }
     this.teacher.walkTo(kid.x + 110, kid.y + 5, () => {
@@ -200,6 +208,8 @@ export class WorldScene extends Phaser.Scene {
   private giveTeddy(kid: Kid) {
     const item = this.carrying!;
     this.carrying = null;
+    item.img.setInteractive({ useHandCursor: true });
+    if (this.holding === kid) this.letGo();
     item.img.setPosition(kid.x + 50, kid.y - 40).setDepth(kid.y + 1);
     kid.setNeed(null);
     kid.cheer();

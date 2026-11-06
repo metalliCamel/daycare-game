@@ -61,8 +61,12 @@ export class Kid extends Walker {
     this.add(this.bubble);
     scene.tweens.add({ targets: this.bubble, y: -244, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
-    this.setSize(150, 190);
-    this.setInteractive(new Phaser.Geom.Rectangle(-75, -170, 150, 200), Phaser.Geom.Rectangle.Contains);
+    // Container hit areas are measured from the container's top-left corner
+    // (x + width/2, y + height/2), so shift the box to sit over the child.
+    // It covers the body, name tag and the need bubble, to be easy to hit.
+    const W = 150, H = 190;
+    this.setSize(W, H);
+    this.setInteractive(new Phaser.Geom.Rectangle(-100 + W / 2, -280 + H / 2, 200, 330), Phaser.Geom.Rectangle.Contains);
     this.input!.cursor = 'pointer';
   }
 
@@ -114,6 +118,9 @@ export class Kid extends Walker {
       const tx = leader.x + side * 95;
       const ty = leader.y + 8;
       if (Math.hypot(tx - this.x, ty - this.y) > 12) this.walkTo(tx, ty);
+    } else if (this.mode === 'free' && this.need === 'sad') {
+      // Sad kids stand still and wait for a cuddle.
+      if (this.moving) this.stop();
     } else if (this.mode === 'free') {
       this.wanderTimer -= dt * 1000;
       if (this.wanderTimer <= 0 && !this.moving) {
