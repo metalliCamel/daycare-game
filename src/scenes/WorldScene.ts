@@ -78,6 +78,8 @@ export class WorldScene extends Phaser.Scene {
     this.kids = [];
     this.items = [];
     this.holding = null;
+    this.shownHeld = null;
+    bus.emit('holding', null);
     this.carrying = null;
     this.roomIdx = -1;
     this.nextSchedule = 0;
@@ -175,6 +177,10 @@ export class WorldScene extends Phaser.Scene {
     this.listen('open-album', () => {
       if (this.scene.isPaused()) return;
       this.openScene('Album', {}, () => undefined);
+    });
+    this.listen('let-go', () => {
+      if (this.scene.isPaused() || !this.holding) return;
+      this.letGo();
     });
     this.listen('open-shop', () => {
       if (this.scene.isPaused()) return;
@@ -360,12 +366,13 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  private shownHeld: Kid | null = null;
   private letGoHinted = false;
   /** The first time, explain how to let go of a child's hand. */
   private hintLetGo() {
     if (this.letGoHinted) return;
     this.letGoHinted = true;
-    this.time.delayedCall(2500, () => prompt('Żeby puścić rączkę dziecka, kliknij ciocię.'));
+    this.time.delayedCall(2500, () => prompt('Żeby puścić rączkę dziecka, kliknij ciocię albo przycisk „Puść” na górze.'));
   }
 
   private randomNeed() {
@@ -424,6 +431,10 @@ export class WorldScene extends Phaser.Scene {
       if (kid.present && kid.input) kid.input.enabled = !this.holding;
     }
     for (const m of this.modules) m.update?.(dt);
+    if (this.holding !== this.shownHeld) {
+      this.shownHeld = this.holding;
+      bus.emit('holding', this.holding ? { key: this.holding.def.key, name: this.holding.def.name } : null);
+    }
 
     if (this.carrying) {
       const img = this.carrying.img;

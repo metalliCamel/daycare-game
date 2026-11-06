@@ -24,6 +24,7 @@ export class HudScene extends Phaser.Scene {
   private musicBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
   private menuBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
   private albumBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
+  private holdBadge?: Phaser.GameObjects.Container;
   private mapButtons: { bg: Phaser.GameObjects.Graphics; dot: Phaser.GameObjects.Arc; x: number }[] = [];
 
   constructor() {
@@ -62,6 +63,33 @@ export class HudScene extends Phaser.Scene {
       music.t.setText(on ? '🎵' : '🔇');
       if (on) playDayMusic();
     }));
+
+    // "Holding hands" badge: shows who the teacher leads; click to let go
+    const hg = this.add.graphics();
+    hg.fillStyle(0xffffff, 0.95).fillRoundedRect(-125, -45, 250, 90, 45);
+    hg.lineStyle(5, 0xff7a6b, 1).strokeRoundedRect(-125, -45, 250, 90, 45);
+    const face = this.add.image(-75, 0, 'star').setDisplaySize(66, 66);
+    const ht = this.add.text(-30, 0, 'Puść ✋', { fontFamily: FONT, fontSize: '34px', fontStyle: '800', color: inkHex }).setOrigin(0, 0.5);
+    const hold = (this.holdBadge = this.add.container(800, 65, [hg, face, ht]).setSize(250, 90).setVisible(false));
+    hold.setInteractive({ useHandCursor: true });
+    let heldName = '';
+    hold.on('pointerover', () => sayHover(`Puść rączkę: ${heldName}`));
+    hold.on('pointerdown', () => {
+      sfx.click();
+      bus.emit('let-go');
+    });
+    const onHolding = (k: { key: string; name: string } | null) => {
+      hold.setVisible(!!k);
+      if (hold.input) hold.input.enabled = !!k;
+      if (k) {
+        heldName = k.name;
+        face.setTexture(k.key).setDisplaySize(66, 66);
+        hold.setScale(0.9);
+        this.tweens.add({ targets: hold, scale: 1, duration: 200, ease: 'Back.out' });
+      }
+    };
+    bus.on('holding', onHolding);
+    this.events.once('shutdown', () => bus.off('holding', onHolding));
 
     // Clock (top-right)
     const cb = this.add.graphics();
@@ -136,6 +164,8 @@ export class HudScene extends Phaser.Scene {
 
     const onMinigame = (on: boolean) => {
       this.map.setVisible(!on);
+      this.holdBadge?.setAlpha(on ? 0 : 1);
+      if (this.holdBadge?.input) this.holdBadge.input.enabled = !on && this.holdBadge.visible;
       for (const b of [this.shopBtn, this.musicBtn, this.menuBtn, this.albumBtn]) {
         b.g.setVisible(!on);
         b.t.setVisible(!on);
