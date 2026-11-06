@@ -20,9 +20,10 @@ export class Overlay extends Phaser.Scene {
     this.add.rectangle(0, 0, GAME_W, GAME_H, color).setOrigin(0);
   }
 
+  /** ✖ in the corner. `result` can be a function, evaluated when clicked. */
   protected closeButton(result: unknown = null) {
     const b = this.add.text(GAME_W - 80, 190, '✖', { fontSize: '56px', color: inkHex }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    b.on('pointerdown', () => this.close(result));
+    b.on('pointerdown', () => this.close(typeof result === 'function' ? (result as () => unknown)() : result));
     b.on('pointerover', () => sayHover('Zamknij'));
     return b;
   }

@@ -193,7 +193,7 @@ export class PotScene extends Overlay {
     const n = this.kids.length;
     let filled = 0;
     this.kids.forEach((id, i) => {
-      const x = GAME_W / 2 + (i - (n - 1) / 2) * 190 + 60;
+      const x = GAME_W / 2 + (i - (n - 1) / 2) * (n > 6 ? 165 : 190) + 60;
       const y = 650;
       const g = this.add.graphics();
       g.fillStyle(0xffffff, 1).fillEllipse(0, 0, 150, 50);

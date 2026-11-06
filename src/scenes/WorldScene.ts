@@ -15,8 +15,14 @@ import { Meals } from '../world/meals';
 import { Cloakroom } from '../world/cloakroom';
 import { Outside } from '../world/outside';
 import { Nap } from '../world/nap';
-import { Decor } from '../world/decor';
+import { Decor, SHOP, OUTFIT_SPOT } from '../world/decor';
 import { PlayCorner } from '../world/playcorner';
+import { Events } from '../world/events';
+import { SeasonLook } from '../world/season';
+import { Garden } from '../world/garden';
+import { Pet } from '../world/pet';
+import { unlocked } from '../world/progress';
+import { playClip } from '../lib/clips';
 
 export type Item = { id: 'teddy' | 'tray'; img: Phaser.GameObjects.Image; home: { x: number; y: number } };
 
@@ -26,6 +32,8 @@ export interface Module {
   update?(dt: number): void;
   /** If this module is keeping a child busy, say what Hania should do. */
   waiting?(kid: Kid): string | null;
+  /** Something (not a child) that must be dealt with before the next activity. */
+  blocker?(): string | null;
 }
 
 const CLOCK_SPEED = 1.5; // game minutes per real second (free time only)
@@ -45,6 +53,9 @@ export class WorldScene extends Phaser.Scene {
   nap!: Nap;
   decor!: Decor;
   play!: PlayCorner;
+  today!: Events;
+  garden!: Garden;
+  pet!: Pet;
   private modules: Module[] = [];
 
   private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd', Phaser.Input.Keyboard.Key>;
@@ -54,6 +65,7 @@ export class WorldScene extends Phaser.Scene {
   private sceneDone: ((result: unknown) => void) | null = null;
   private busHandlers: [string, (...a: never[]) => void][] = [];
   sickToday = false;
+  private messToday = false;
   private nagTimer = 0;
 
   private schedule: { at: number; run: () => void }[] = [];
@@ -70,6 +82,7 @@ export class WorldScene extends Phaser.Scene {
     this.roomIdx = -1;
     this.nextSchedule = 0;
     this.sickToday = false;
+    this.messToday = false;
     this.busHandlers = [];
     state.starsToday = 0;
     state.present = [];
@@ -89,6 +102,7 @@ export class WorldScene extends Phaser.Scene {
       if (kid) this.clickKid(kid);
       else this.letGo();
     });
+    this.dressTeacher();
     this.cameras.main.startFollow(this.teacher, true, 0.08, 0);
     this.cameras.main.centerOnX(this.teacher.x);
 
@@ -102,6 +116,8 @@ export class WorldScene extends Phaser.Scene {
       this.kids.push(kid);
     });
 
+    this.today = new Events(this);
+    new SeasonLook(this);
     this.decor = new Decor(this);
     this.bathroom = new Bathroom(this);
     this.playroom = new Playroom(this);
@@ -110,16 +126,22 @@ export class WorldScene extends Phaser.Scene {
     this.outside = new Outside(this);
     this.nap = new Nap(this);
     this.play = new PlayCorner(this);
-    this.modules = [this.cloak, this.outside, this.nap, this.play, this.playroom, this.meals, this.bathroom];
+    this.garden = new Garden(this);
+    this.pet = new Pet(this);
+    if (unlocked('pet') && !save.pet.has) this.pet.arrive();
+    this.modules = [this.today, this.cloak, this.outside, this.nap, this.play, this.playroom, this.meals, this.bathroom, this.garden, this.pet];
 
+    // The day's plan grows with the unlock level (a new game starts simple)
     this.schedule = [
       { at: 9 * 60, run: () => this.meals.start('Śniadanie') },
-      { at: 10 * 60, run: () => this.outside.start() },
+      ...(unlocked('outside') ? [{ at: 10 * 60, run: () => this.outside.start() }] : []),
+      ...(this.today.hasSpecial() ? [{ at: 11 * 60 + 5, run: () => this.today.startSpecial() }] : []),
       { at: 12 * 60, run: () => this.meals.start('Obiad') },
-      { at: 13 * 60, run: () => this.nap.start() },
-      { at: 14 * 60 + 30, run: () => this.meals.start('Podwieczorek') },
+      ...(unlocked('nap') ? [{ at: 13 * 60, run: () => this.nap.start() }] : []),
+      ...(unlocked('snack') ? [{ at: 14 * 60 + 30, run: () => this.meals.start('Podwieczorek') }] : []),
       { at: 15 * 60 + 30, run: () => this.cloak.startPickup() },
     ];
+    this.time.delayedCall(1200, () => playClip('hello'));
 
     // Clicking empty floor walks there.
     this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: unknown[]) => {
@@ -148,6 +170,12 @@ export class WorldScene extends Phaser.Scene {
         this.scene.start('Title');
       });
     });
+    this.listen('outfit', () => this.dressTeacher());
+    this.listen('decor-bought', () => this.dressTeacher());
+    this.listen('open-album', () => {
+      if (this.scene.isPaused()) return;
+      this.openScene('Album', {}, () => undefined);
+    });
     this.listen('open-shop', () => {
       if (this.scene.isPaused()) return;
       this.openScene('Shop', {}, () => prompt('Wracamy do pracy!'));
@@ -159,6 +187,19 @@ export class WorldScene extends Phaser.Scene {
     state.minutes = 7 * 60 + 30;
     bus.emit('clock', state.minutes);
     this.cloak.startDropoff();
+  }
+
+  private outfitImg: Phaser.GameObjects.Image | null = null;
+  /** The teacher's outfit accessory (hat, glasses...) bought in the shop. */
+  dressTeacher() {
+    this.outfitImg?.destroy();
+    this.outfitImg = null;
+    const id = save.outfit;
+    const item = id ? SHOP.find((s) => s.id === id) : null;
+    if (!item) return;
+    const [x, y, size] = OUTFIT_SPOT[item.id] ?? [0, -180, 70];
+    this.outfitImg = this.add.image(x, y, item.key).setDisplaySize(size, size);
+    this.teacher.add(this.outfitImg);
   }
 
   /** bus.on that is removed automatically when the scene restarts. */
@@ -333,8 +374,15 @@ export class WorldScene extends Phaser.Scene {
     if (kids.filter((k) => k.need).length >= 2) return;
     const free = kids.filter((k) => !k.need && k.mode === 'free');
     if (!free.length) return;
-    const r = Math.random();
+    const trouble = unlocked('trouble');
+    const r = trouble ? Math.random() : 0.4 + Math.random() * 0.6;
     const kid = Phaser.Utils.Array.GetRandom(free);
+    if (trouble && r < 0.06 && !this.messToday) {
+      this.messToday = true;
+      this.playroom.startMess();
+      return;
+    }
+    if (this.pet.needsCare() && Math.random() < 0.3) this.pet.remind();
     if (r < 0.08 && !this.sickToday && kids.length > 3) {
       this.sickToday = true;
       kid.setNeed('sick');
@@ -410,7 +458,8 @@ export class WorldScene extends Phaser.Scene {
 
     // Gentle clock: only runs during free time, and waits for kids who need help.
     const ev = this.schedule[this.nextSchedule];
-    const allSettled = this.presentKids.every((kid) => kid.mode !== 'busy' && !kid.need);
+    const blocker = this.modules.map((m) => m.blocker?.()).find(Boolean) ?? null;
+    const allSettled = !blocker && this.presentKids.every((kid) => kid.mode !== 'busy' && !kid.need);
     if (ev && state.minutes >= ev.at) {
       if (allSettled) {
         this.nextSchedule++;
@@ -424,7 +473,8 @@ export class WorldScene extends Phaser.Scene {
           this.nagTimer = 15000;
           const busy = this.presentKids.find((c) => this.waitingText(c));
           const needy = this.presentKids.find((c) => c.need);
-          if (busy) prompt(`Zaraz następne zajęcie, ale najpierw: ${this.waitingText(busy)}`);
+          if (blocker) prompt(`Zaraz następne zajęcie, ale najpierw: ${blocker}`);
+          else if (busy) prompt(`Zaraz następne zajęcie, ale najpierw: ${this.waitingText(busy)}`);
           else if (needy) prompt(`Zaraz następne zajęcie, ale najpierw pomóż: ${needy.needText()}`);
         }
         this.releaseStuck(deltaMs);

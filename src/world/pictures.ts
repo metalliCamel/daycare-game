@@ -65,6 +65,22 @@ export const PICTURES: Picture[] = [
   },
 ];
 
+/** Holiday card (laurka): a big heart with flowers. Not in the everyday rotation. */
+export const CARD_PICTURE = 4;
+PICTURES.push({
+  name: 'Laurka',
+  regions: [
+    { t: 'rect', x: 0, y: 0, w: 400, h: 400 },
+    { t: 'circle', x: 150, y: 150, r: 70 },
+    { t: 'circle', x: 250, y: 150, r: 70 },
+    { t: 'poly', pts: [86, 180, 314, 180, 200, 320] },
+    { t: 'circle', x: 60, y: 340, r: 28 },
+    { t: 'circle', x: 340, y: 340, r: 28 },
+    { t: 'circle', x: 60, y: 60, r: 24 },
+    { t: 'circle', x: 340, y: 60, r: 24 },
+  ],
+});
+
 export const PALETTE = [0xff5d5d, 0xff9f43, 0xffd45c, 0x6bd66b, 0x4fa8ff, 0x9b6bff, 0xff7ac8, 0x8b5a2b, 0xffffff];
 
 /** Draw one region onto a Graphics object. */

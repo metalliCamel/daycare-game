@@ -22,7 +22,7 @@ export type Dish =
       color: number;
       vessel: 'pot' | 'bowl';
     }
-  | { kind: 'topping'; id: string; name: string; acc: string; icon: EmojiKey; base: 'porridge' | 'cupcake'; toppings: EmojiKey[] };
+  | { kind: 'topping'; id: string; name: string; acc: string; icon: EmojiKey; base: 'porridge' | 'cupcake' | 'cake' | 'tree' | 'egg'; toppings: EmojiKey[] };
 
 export const DISHES: Record<string, Dish> = {
   kanapki: { kind: 'sandwich', id: 'kanapki', name: 'kanapki', acc: 'kanapki', icon: 'sandwich' },
@@ -42,6 +42,10 @@ export const DISHES: Record<string, Dish> = {
     kind: 'topping', id: 'babeczki', name: 'babeczki', acc: 'babeczki', icon: 'cupcake', base: 'cupcake',
     toppings: ['strawberry', 'chocolate', 'candy', 'blueberries', 'banana'],
   },
+  tort: {
+    kind: 'topping', id: 'tort', name: 'tort urodzinowy', acc: 'tort urodzinowy', icon: 'cake', base: 'cake',
+    toppings: ['strawberry', 'chocolate', 'candy', 'blueberries', 'banana'],
+  },
   owoce: {
     kind: 'pot', id: 'owoce', name: 'sałatka owocowa', acc: 'sałatkę owocową', icon: 'fruitsalad',
     cut: ['apple', 'banana', 'kiwi'], add: ['apple', 'banana', 'kiwi', 'grapes'], wrong: ['onion', 'potato'], color: 0xfff1c2, vessel: 'bowl',
@@ -55,6 +59,8 @@ export const FOOD_NAMES: Partial<Record<EmojiKey, [string, string]>> = {
   apple: ['jabłko', 'jabłko'], banana: ['banan', 'banana'], kiwi: ['kiwi', 'kiwi'], grapes: ['winogrona', 'winogrona'],
   strawberry: ['truskawka', 'truskawkę'], blueberries: ['borówki', 'borówki'], honey: ['miód', 'miód'],
   chocolate: ['czekolada', 'czekoladę'], candy: ['cukierek', 'cukierka'], cupcake: ['babeczka', 'babeczkę'],
+  ornament: ['bombka', 'bombkę'], starxmas: ['gwiazdka', 'gwiazdkę'], bell: ['dzwoneczek', 'dzwoneczek'], ribbon: ['kokardka', 'kokardkę'],
+  flower: ['kwiatek', 'kwiatek'], heart: ['serduszko', 'serduszko'], butterfly: ['motylek', 'motylka'],
 };
 
 /** Breakfast / lunch / snack, alternating between two dishes each day. */

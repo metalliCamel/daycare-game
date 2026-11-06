@@ -7,8 +7,10 @@ import { addStars, prompt } from '../lib/state';
 import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
 import type { EmojiKey } from '../lib/assets';
+import { save } from '../lib/state';
+import { stat, befriend } from './progress';
 
-export type PlayId = 'blocks' | 'puzzle' | 'ball' | 'books' | 'draw';
+export type PlayId = 'blocks' | 'puzzle' | 'ball' | 'books' | 'draw' | 'music' | 'clay' | 'pet';
 
 export const PLAY: Record<PlayId, { name: string; acc: string; icon: EmojiKey }> = {
   blocks: { name: 'klocki', acc: 'klocki', icon: 'blocks' },
@@ -16,6 +18,9 @@ export const PLAY: Record<PlayId, { name: string; acc: string; icon: EmojiKey }>
   ball: { name: 'piłka', acc: 'piłkę', icon: 'ball' },
   books: { name: 'książeczka', acc: 'książeczkę', icon: 'books' },
   draw: { name: 'rysowanie', acc: 'rysowanie', icon: 'palette' },
+  music: { name: 'muzyka', acc: 'muzykę', icon: 'drum' },
+  clay: { name: 'plastelina', acc: 'plastelinę', icon: 'clay' },
+  pet: { name: 'chomik', acc: 'chomika', icon: 'hamster' },
 };
 
 const BOOK_PAGES: { key: EmojiKey; text: string }[] = [
@@ -48,16 +53,21 @@ export class PlayCorner implements Module {
     };
     add('blocks', prop(w, 'blocks', p + 1420, 760, 110), p + 1420, 760, p + 1300, 720, 'Klocki');
     add('puzzle', prop(w, 'puzzle', p + 1060, 770, 95), p + 1060, 770, p + 960, 720, 'Puzzle');
-    add('ball', prop(w, 'ball', p + 200, 760, 85), p + 200, 760, p + 330, 720, 'Piłka');
+    add('ball', prop(w, 'ball', p + 380, 760, 85), p + 380, 760, p + 500, 720, 'Piłka');
+    // Music corner: drum + guitar
+    prop(w, 'guitar', p + 210, 690, 90);
+    add('music', prop(w, 'drum', p + 140, 720, 95), p + 140, 720, p + 260, 720, 'Instrumenty');
     add('books', w.add.zone(p + 300, 250, 320, 180).setDepth(-40), p + 300, 300, p + 300, 680, 'Książeczki');
     // Drawing uses the craft table owned by the playroom; this zone just routes kids there
     this.spots.set('draw', { id: 'draw', x: p + 660, y: 640, kidX: p + 600, kidY: 760, busy: null, obj: w.add.zone(0, 0, 1, 1) });
+    this.spots.set('clay', { id: 'clay', x: p + 660, y: 640, kidX: p + 560, kidY: 720, busy: null, obj: w.add.zone(0, 0, 1, 1) });
+    this.spots.set('pet', { id: 'pet', x: 0, y: 0, kidX: 0, kidY: 0, busy: null, obj: w.add.zone(0, 0, 1, 1) });
   }
 
   /** Pick a free child and ask for a game nobody else is playing. */
   ask(kid: Kid) {
     const taken = new Set(this.w.presentKids.filter((k) => k.need === 'play').map((k) => k.wish));
-    const options = (Object.keys(PLAY) as PlayId[]).filter((id) => !taken.has(id) && !this.spots.get(id)!.busy);
+    const options = (Object.keys(PLAY) as PlayId[]).filter((id) => !taken.has(id) && !this.spots.get(id)!.busy && (id !== 'pet' || save.pet.has));
     if (!options.length) return false;
     const id = Phaser.Utils.Array.GetRandom(options);
     kid.wish = id;
@@ -73,6 +83,14 @@ export class PlayCorner implements Module {
 
   finishDrawing(kid: Kid) {
     this.done(kid, 'Piękny rysunek!');
+  }
+
+  finishClay(kid: Kid) {
+    this.done(kid, 'Ale piękne zwierzątka z plasteliny!');
+  }
+
+  finishPet(kid: Kid) {
+    this.done(kid, 'Chomik się cieszy, że go odwiedziliście!');
   }
 
   private use(spot: Spot) {
@@ -121,6 +139,17 @@ export class PlayCorner implements Module {
       case 'ball':
         this.throws = 0;
         prompt(`Rzucamy piłkę! Kliknij piłkę trzy razy, żeby rzucić ją do ${kid.def.gen}.`);
+        break;
+      case 'music':
+        this.w.openScene<boolean>('Music', { kidId: kid.def.id }, (ok) => {
+          if (ok) {
+            stat('music');
+            this.done(kid, 'Brawo! Ale koncert!');
+          } else {
+            spot.busy = null;
+            kid.mode = 'free';
+          }
+        });
         break;
       case 'books':
         this.page = 0;
@@ -229,6 +258,7 @@ export class PlayCorner implements Module {
 
   private done(kid: Kid, text: string) {
     for (const s of this.spots.values()) if (s.busy === kid) s.busy = null;
+    befriend(kid);
     kid.setNeed(null);
     kid.mode = 'free';
     kid.cheer();
@@ -239,7 +269,7 @@ export class PlayCorner implements Module {
 
   waiting(kid: Kid): string | null {
     for (const sp of this.spots.values()) {
-      if (sp.busy === kid && sp.id !== 'draw') return `${kid.def.name} czeka przy zabawce: ${PLAY[sp.id].name}. Kliknij zabawkę, żeby się pobawić.`;
+      if (sp.busy === kid && sp.id !== 'draw' && sp.id !== 'music') return `${kid.def.name} czeka przy zabawce: ${PLAY[sp.id].name}. Kliknij zabawkę, żeby się pobawić.`;
     }
     return null;
   }

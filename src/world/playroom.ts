@@ -6,7 +6,8 @@ import { prop } from './draw';
 import { addStars, prompt, save, persist, state } from '../lib/state';
 import { say } from '../lib/voice';
 import { sfx } from '../lib/sound';
-import { PICTURES, drawPicture } from './pictures';
+import { drawPicture, CARD_PICTURE } from './pictures';
+import { stat, befriend } from './progress';
 import type { EmojiKey } from '../lib/assets';
 
 const TOYS: EmojiKey[] = ['ball', 'train', 'dino', 'blocks', 'teddy'];
@@ -61,6 +62,8 @@ export class Playroom implements Module {
     kid.cheer();
     sfx.giggle();
     addStars();
+    befriend(kid);
+    w.today.comforted(kid);
     say(`${kid.def.name} się uśmiecha! Brawo!`);
     w.time.delayedCall(3500, () => {
       if (w.carrying === item) return;
@@ -118,6 +121,7 @@ export class Playroom implements Module {
         k.setNeed(null);
         k.mode = 'free';
         k.cheer();
+        befriend(k);
       });
       sfx.giggle();
       addStars();
@@ -129,10 +133,15 @@ export class Playroom implements Module {
 
   // ---------- Crafts ----------
 
-  /** The craft table: draw alone, or with a child who asked to draw. */
+  /** The craft table: draw alone, draw or model clay with a child, or a holiday card. */
   private useTable() {
     const w = this.w;
     const kid = w.holding;
+    if (this.clayKid) return this.clayStep();
+    if (w.today.wantsCard()) {
+      this.openCraft((drew) => drew && w.today.cardDone(), CARD_PICTURE, true);
+      return;
+    }
     if (kid && w.play.wantsToDraw(kid)) {
       w.takeHeld();
       kid.mode = 'busy';
@@ -142,6 +151,14 @@ export class Playroom implements Module {
       }));
       return;
     }
+    if (kid && kid.need === 'play' && kid.wish === 'clay') {
+      w.takeHeld();
+      kid.mode = 'busy';
+      this.clayKid = kid;
+      this.clayN = 0;
+      kid.walkTo(roomX('sala') + 560, 720, () => prompt('Lepimy z plasteliny! Kliknij stolik trzy razy.'));
+      return;
+    }
     if (kid?.need === 'play') {
       say(`${kid.def.name} chce czegoś innego. Popatrz na dymek!`);
       return;
@@ -149,12 +166,80 @@ export class Playroom implements Module {
     this.openCraft();
   }
 
-  openCraft(after?: (drew: boolean) => void) {
-    if (state.phase !== 'free') {
+  // ---------- Clay ----------
+  private clayKid: Kid | null = null;
+  private clayN = 0;
+  private clayShapes: Phaser.GameObjects.Image[] = [];
+
+  private clayStep() {
+    const w = this.w;
+    const kid = this.clayKid!;
+    if (kid.moving) return;
+    const p = roomX('sala');
+    const shapes: EmojiKey[] = ['snail', 'cat', 'dog'];
+    const names = ['Ślimak!', 'Kotek!', 'Piesek!'];
+    const img = prop(w, shapes[this.clayN], p + 600 + this.clayN * 70, 640, 10, 693).setTint(0xffc9a8);
+    w.tweens.add({ targets: img, displayWidth: 70, displayHeight: 70, duration: 300, ease: 'Back.out' });
+    this.clayShapes.push(img);
+    sfx.pop();
+    say(names[this.clayN]);
+    this.clayN++;
+    if (this.clayN >= 3) {
+      this.clayKid = null;
+      w.play.finishClay(kid);
+      w.time.delayedCall(5000, () => {
+        this.clayShapes.forEach((c) => w.tweens.add({ targets: c, alpha: 0, duration: 400, onComplete: () => c.destroy() }));
+        this.clayShapes = [];
+      });
+    }
+  }
+
+  waiting(kid: Kid): string | null {
+    if (this.clayKid === kid) return `${kid.def.name} lepi z plasteliny. Kliknij stolik do rysowania.`;
+    return null;
+  }
+
+  // ---------- Mess: toys all over the floor ----------
+  private mess: Phaser.GameObjects.Image[] = [];
+
+  startMess() {
+    const w = this.w;
+    if (this.mess.length) return;
+    const p = roomX('sala');
+    const toys: EmojiKey[] = ['blocks', 'puzzle', 'books', 'teddy', 'dino', 'unicorn', 'train', 'ball'];
+    this.mess = toys.map((k) => {
+      const img = prop(w, k, p + Phaser.Math.Between(150, 1450), Phaser.Math.Between(650, 760), 70);
+      img.setAngle(Phaser.Math.Between(-40, 40));
+      w.clickable(img, () => w.goThen(img.x + 80, Math.max(img.y + 30, 700), () => this.tidy()), 'Bałagan');
+      return img;
+    });
+    sfx.wrong();
+    prompt('Ojej, ale bałagan w sali! Kliknij zabawki, żeby je posprzątać.');
+  }
+
+  private tidy() {
+    if (!this.mess.length) return;
+    const keys = this.mess.map((m) => m.texture.key);
+    this.w.openScene<boolean>('Sort', { toys: keys }, (ok) => {
+      if (!ok) return;
+      this.mess.forEach((m) => m.destroy());
+      this.mess = [];
+      stat('tidy');
+      addStars();
+      prompt('Porządek! Wszystkie zabawki są na swoim miejscu.');
+    });
+  }
+
+  blocker(): string | null {
+    return this.mess.length ? 'w sali jest bałagan. Kliknij zabawki na podłodze i posprzątaj.' : null;
+  }
+
+  openCraft(after?: (drew: boolean) => void, picture?: number, anyPhase = false) {
+    if (state.phase !== 'free' && !anyPhase) {
       after?.(false);
       return prompt('Porysujemy później, teraz mamy inne zajęcie.');
     }
-    const idx = save.drawings.length % PICTURES.length;
+    const idx = picture ?? save.drawings.length % CARD_PICTURE;
     this.w.openScene<string | null>('Craft', { picture: idx }, (result) => {
       if (!result) {
         after?.(false);
@@ -164,8 +249,11 @@ export class Playroom implements Module {
       if (save.drawings.length > 8) save.drawings.shift();
       persist();
       this.renderDrawings();
-      addStars(2);
-      prompt('Piękny rysunek! Wisi już na ścianie w sali.');
+      stat('drawings');
+      if (picture === undefined) {
+        addStars(2);
+        prompt('Piękny rysunek! Wisi już na ścianie w sali.');
+      }
       after?.(true);
     });
   }

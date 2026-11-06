@@ -7,7 +7,7 @@ import { say } from '../lib/voice';
 import { sfx } from '../lib/sound';
 import type { Drink } from '../world/meals';
 
-const CUP_W = 150;
+let CUP_W = 150;
 const CUP_H = 220;
 const CUP_Y = 600; // bottom of the cups
 const LINE = 0.8; // target fill level
@@ -50,7 +50,8 @@ export class PourScene extends Overlay {
     g.fillStyle(0xcf8f52, 1).fillRect(0, CUP_Y + 40, GAME_W, GAME_H - CUP_Y - 40);
 
     const n = this.kids.length;
-    const gap = n > 4 ? 225 : 280;
+    CUP_W = n > 6 ? 120 : 150;
+    const gap = n > 6 ? 170 : n > 4 ? 225 : 280;
     this.cupX = this.kids.map((_, i) => GAME_W / 2 + (i - (n - 1) / 2) * gap + 60);
     this.kids.map(kidDef).forEach((kid, i) => {
       const x = this.cupX[i];

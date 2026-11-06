@@ -1,19 +1,25 @@
 // OpenMoji icons (CC BY-SA 4.0, https://openmoji.org) used as game art.
 // Each key maps to public/emoji/<key>.svg.
 export const EMOJI = [
-  'angry', 'apple', 'ball', 'balloon', 'banana', 'bed', 'blocks', 'blueberries', 'books', 'boots', 'bowl',
-  'bread', 'broom', 'bucket', 'candy', 'cap', 'car', 'carrot', 'chair', 'cheese', 'chocolate', 'cloud_rain',
-  'coat', 'couch', 'crayon', 'cry', 'cucumber', 'cup', 'cupcake', 'dino', 'door', 'drop', 'egg', 'fish',
-  'fruitsalad', 'gift', 'gloves', 'grapes', 'ham', 'handshake', 'happy', 'heart', 'honey', 'hourglass',
-  'juice', 'kid_antek', 'kid_franek', 'kid_maja', 'kid_ola', 'kid_stas', 'kid_zosia', 'kiwi', 'knife',
-  'lamp', 'lettuce', 'lightbulb', 'milk', 'moon', 'musicbox', 'onion', 'orange', 'palette', 'pan',
-  'parent_antek', 'parent_franek', 'parent_maja', 'parent_ola', 'parent_stas', 'parent_zosia', 'party',
-  'pasta', 'pear', 'peas', 'pepper', 'phone', 'piano', 'picture', 'plant', 'plate', 'pot', 'potato',
-  'puzzle', 'rainbow', 'rocket', 'sandcastle', 'sandwich', 'scarf', 'shoe', 'shop', 'shower', 'sick',
-  'sleepy', 'slide', 'slippers', 'snowflake', 'soap', 'sparkles', 'sponge', 'spoon', 'star', 'strawberry',
-  'sun', 'sunglasses', 'tea', 'teacher_1', 'teacher_2', 'teacher_3', 'teacher_4', 'teacher_5', 'teacher_6',
-  'teapot', 'teddy', 'thermometer', 'toilet', 'toiletpaper', 'tomato', 'train', 'tree', 'umbrella',
-  'unicorn', 'water', 'wave', 'zzz',
+  'album', 'angry', 'apple', 'apron', 'ball', 'balloon', 'balloon2', 'banana', 'bandage', 'bed', 'bell',
+  'bird', 'blocks', 'blueberries', 'books', 'boots', 'bowl', 'box', 'bread', 'broom', 'bucket', 'butterfly',
+  'cake', 'candle', 'candy', 'cap', 'car', 'carrot', 'cat', 'chair', 'cheese', 'chestnut', 'chocolate',
+  'clay', 'cloud_rain', 'coat', 'couch', 'cowboy', 'crayon', 'crown', 'cry', 'cucumber', 'cup', 'cupcake',
+  'dino', 'doctor', 'dog', 'door', 'drop', 'drum', 'duck', 'easteregg', 'egg', 'firefighter', 'firetruck',
+  'fish', 'flower', 'fruitsalad', 'gift', 'gift2', 'glasses', 'gloves', 'gradcap', 'grapes', 'guitar', 'ham',
+  'hamster', 'handshake', 'happy', 'heart', 'heart2', 'hedgehog', 'helmet', 'honey', 'hourglass', 'icecream',
+  'juice', 'kid_antek', 'kid_franek', 'kid_lena', 'kid_maja', 'kid_ola', 'kid_stas', 'kid_tymek',
+  'kid_zosia', 'kiwi', 'knife', 'lamp', 'leaf', 'lettuce', 'librarian', 'lightbulb', 'maple', 'mask', 'mic',
+  'milk', 'moon', 'musicbox', 'necklace', 'onion', 'orange', 'ornament', 'palette', 'pan', 'parent_antek',
+  'parent_franek', 'parent_lena', 'parent_maja', 'parent_ola', 'parent_stas', 'parent_tymek', 'parent_zosia',
+  'party', 'pasta', 'pear', 'peas', 'pepper', 'phone', 'piano', 'picture', 'plant', 'plate', 'pool', 'pot',
+  'potato', 'puzzle', 'rabbit', 'rainbow', 'ribbon', 'rocket', 'sandcastle', 'sandwich', 'santa', 'scarf',
+  'seedling', 'seeds', 'shoe', 'shop', 'shower', 'sick', 'sled', 'sleepy', 'slide', 'slippers', 'snail',
+  'snowflake', 'snowman', 'soap', 'sock', 'sparkles', 'sponge', 'spoon', 'squirrel', 'star', 'starxmas',
+  'sticker', 'strawberry', 'sun', 'sunflower', 'sunglasses', 'sunhat', 'tea', 'teacher_1', 'teacher_2',
+  'teacher_3', 'teacher_4', 'teacher_5', 'teacher_6', 'teapot', 'teddy', 'thermometer', 'toilet',
+  'toiletpaper', 'tomato', 'tooth', 'toothbrush', 'tophat', 'trafficlight', 'train', 'tree', 'trumpet',
+  'tulip', 'umbrella', 'unicorn', 'water', 'wave', 'xmastree', 'zzz',
 ] as const;
 
 export type EmojiKey = (typeof EMOJI)[number] | 'swing';

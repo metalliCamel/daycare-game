@@ -4,7 +4,7 @@ import { ROOM_W, FLOOR_MIN_Y, FLOOR_MAX_Y, roomIndexAt } from '../lib/rooms';
 import type { EmojiKey } from '../lib/assets';
 import { FONT, inkHex } from '../lib/layout';
 
-export type Need = 'check' | 'potty' | 'wash' | 'sad' | 'hungry' | 'sick' | 'fight' | 'coat' | 'dress' | 'wish' | 'awake' | 'home' | 'play' | null;
+export type Need = 'check' | 'potty' | 'wash' | 'sad' | 'hungry' | 'sick' | 'fight' | 'coat' | 'dress' | 'wish' | 'awake' | 'home' | 'play' | 'hurt' | 'teeth' | null;
 
 export type KidDef = {
   id: string;
@@ -28,6 +28,8 @@ export const KIDS: KidDef[] = [
   { id: 'ola', name: 'Ola', gen: 'Oli', acc: 'Olę', parentFem: true, key: 'kid_ola', parent: 'parent_ola', parentLabel: 'Babcia Oli', girl: true, likes: ['cheese', 'cucumber', 'egg'] },
   { id: 'franek', name: 'Franek', gen: 'Franka', acc: 'Franka', parentFem: false, key: 'kid_franek', parent: 'parent_franek', parentLabel: 'Tata Franka', girl: false, likes: ['ham', 'cheese', 'tomato'] },
   { id: 'maja', name: 'Maja', gen: 'Mai', acc: 'Maję', parentFem: true, key: 'kid_maja', parent: 'parent_maja', parentLabel: 'Mama Mai', girl: true, likes: ['egg', 'tomato', 'cucumber'] },
+  { id: 'lena', name: 'Lena', gen: 'Leny', acc: 'Lenę', parentFem: true, key: 'kid_lena', parent: 'parent_lena', parentLabel: 'Mama Leny', girl: true, likes: ['cheese', 'tomato', 'egg'] },
+  { id: 'tymek', name: 'Tymek', gen: 'Tymka', acc: 'Tymka', parentFem: false, key: 'kid_tymek', parent: 'parent_tymek', parentLabel: 'Tata Tymka', girl: false, likes: ['ham', 'egg', 'lettuce'] },
   { id: 'stas', name: 'Staś', gen: 'Stasia', acc: 'Stasia', parentFem: false, key: 'kid_stas', parent: 'parent_stas', parentLabel: 'Dziadek Stasia', girl: false, likes: ['ham', 'cucumber', 'lettuce'] },
 ];
 
@@ -47,6 +49,8 @@ const NEED_ICON: Record<Exclude<Need, null>, EmojiKey> = {
   awake: 'cry',
   home: 'car',
   play: 'blocks',
+  hurt: 'bandage',
+  teeth: 'toothbrush',
 };
 
 /**
@@ -148,6 +152,19 @@ export class Kid extends Walker {
     });
   }
 
+  private costumeImg: Phaser.GameObjects.Image | null = null;
+  costume: EmojiKey | null = null;
+  /** A hat for the whole day: costume day, or a crown on your birthday. */
+  setCostume(key: EmojiKey | null) {
+    this.costume = key;
+    this.costumeImg?.destroy();
+    this.costumeImg = null;
+    if (key) {
+      this.costumeImg = this.scene.add.image(0, -158, key).setDisplaySize(82, 82);
+      this.add(this.costumeImg);
+    }
+  }
+
   setBadge(text: string | null) {
     this.badge.setText(text ?? '').setVisible(!!text);
     if (text) {
@@ -170,6 +187,8 @@ export class Kid extends Walker {
       case 'dress': return `${n} musi się ubrać na dwór.`;
       case 'wish': return `${n} chce się bawić: ${this.wishName()}. Zaprowadź tam!`;
       case 'play': return `${n} chce się bawić: ${this.playName()}. Kliknij ${this.adj('ją', 'go')} i zaprowadź do zabawy!`;
+      case 'hurt': return `${n} ${this.adj('przewróciła', 'przewrócił')} się! Kliknij, żeby nakleić plaster.`;
+      case 'teeth': return `${n} musi umyć ząbki. Kliknij umywalkę w łazience.`;
       case 'awake': return `${n} nie może zasnąć. Kliknij, żeby pogłaskać.`;
       case 'home': return this.wearing.includes('coat') ? `Kurtka ubrana! Teraz kliknij: ${this.def.parentLabel}.` : `${this.def.parentLabel} czeka na ${this.def.acc}. Kliknij ${this.adj('ją', 'go')}, a potem wieszak z ${this.adj('jej', 'jego')} buzią.`;
       default: return `To jest ${n}.`;
@@ -177,7 +196,7 @@ export class Kid extends Walker {
   }
 
   private playName() {
-    return { blocks: 'klocki', puzzle: 'puzzle', ball: 'piłka', books: 'książeczka', draw: 'rysowanie' }[this.wish ?? ''] ?? 'zabawa';
+    return { blocks: 'klocki', puzzle: 'puzzle', ball: 'piłka', books: 'książeczka', draw: 'rysowanie', music: 'muzyka', clay: 'plastelina', pet: 'chomik' }[this.wish ?? ''] ?? 'zabawa';
   }
 
   private wishName() {
@@ -205,6 +224,7 @@ export class Kid extends Walker {
       this.setNeed(null);
       this.setBadge(null);
       this.setWearing([]);
+      this.setCostume(null);
       this.homeRoom = null;
     }
   }
@@ -218,7 +238,7 @@ export class Kid extends Walker {
       const tx = leader.x + side * 95;
       const ty = leader.y + 8;
       if (Math.hypot(tx - this.x, ty - this.y) > 12) this.walkTo(tx, ty);
-    } else if (this.mode === 'free' && (this.need === 'sad' || this.need === 'sick' || this.need === 'fight' || this.need === 'play')) {
+    } else if (this.mode === 'free' && (this.need === 'sad' || this.need === 'sick' || this.need === 'fight' || this.need === 'play' || this.need === 'hurt')) {
       // Upset or poorly kids stand still and wait for help.
       if (this.moving) this.stop();
     } else if (this.mode === 'free') {

@@ -7,6 +7,7 @@ import { state, addStars, prompt } from '../lib/state';
 import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
 import type { EmojiKey } from '../lib/assets';
+import { season, stat, befriend, type Season } from './progress';
 
 export type Weather = 'sun' | 'rain' | 'cold';
 export const WEATHER: Record<Weather, { name: string; icon: EmojiKey; wear: EmojiKey[] }> = {
@@ -19,10 +20,18 @@ const NUMBERS = ['jeden', 'dwa', 'trzy', 'cztery', 'pięć', 'sześć', 'siedem'
 const WISHES: { id: 'swing' | 'slide' | 'sand'; icon: EmojiKey }[] = [
   { id: 'swing', icon: 'swing' as EmojiKey },
   { id: 'slide', icon: 'slide' },
-  { id: 'sand', icon: 'bucket' },
+  { id: 'sand', icon: 'bucket' }, // replaced by the season's activity at runtime
 ];
 
 type Step = 'dress' | 'play' | 'count' | null;
+
+/** The sandbox spot changes with the season. */
+const SAND: Record<Season, { name: string; wish: EmojiKey; build: EmojiKey; prompt: string; done: string }> = {
+  wiosna: { name: 'piaskownica', wish: 'bucket', build: 'sandcastle', prompt: 'Kliknij piaskownicę trzy razy, żeby zbudować zamek!', done: 'Piękny zamek!' },
+  lato: { name: 'basenik', wish: 'pool', build: 'drop', prompt: 'Chlapu, chlap! Kliknij basenik trzy razy!', done: 'Ale frajda w baseniku!' },
+  jesien: { name: 'liście', wish: 'maple', build: 'maple', prompt: 'Grabimy liście! Kliknij kupkę liści trzy razy, a potem hop!', done: 'Hop w liście! Hura!' },
+  zima: { name: 'bałwan', wish: 'snowman', build: 'snowman', prompt: 'Lepimy bałwana! Kliknij śnieg trzy razy.', done: 'Piękny bałwan!' },
+};
 
 /** Getting dressed for the weather, playground fun, and counting everyone back in. */
 export class Outside implements Module {
@@ -41,6 +50,9 @@ export class Outside implements Module {
   private sandClicks = 0;
   private busySlide = false;
   private ring!: Phaser.GameObjects.Arc;
+  private season: Season = season();
+  private hurtDone = false;
+  private trip = false;
   private weatherFx: Phaser.Time.TimerEvent | null = null;
   /** big icons above each playground toy, always clickable */
   private signs = new Map<'swing' | 'slide' | 'sand', Phaser.GameObjects.Container>();
@@ -51,11 +63,21 @@ export class Outside implements Module {
 
     // Sandbox
     const g = w.add.graphics().setDepth(700);
-    g.fillStyle(0xb5835a, 1).fillRoundedRect(d + 400, 735, 260, 110, 16);
-    g.fillStyle(0xf3d98b, 1).fillRoundedRect(d + 412, 745, 236, 90, 12);
-    prop(w, 'bucket', d + 620, 790, 70, 701);
-    const sand = w.add.zone(d + 530, 790, 260, 130).setDepth(702);
-    w.clickable(sand, () => w.goThen(d + 700, 790, () => this.useSand()), 'Piaskownica');
+    const sea = this.season;
+    if (sea === 'lato') {
+      g.fillStyle(0x4fa8ff, 1).fillEllipse(d + 530, 690, 270, 80);
+      g.fillStyle(0xbfe6ff, 1).fillEllipse(d + 530, 685, 230, 56);
+    } else if (sea === 'zima') {
+      g.fillStyle(0xffffff, 1).fillEllipse(d + 530, 695, 260, 70);
+    } else if (sea === 'jesien') {
+      for (let i = 0; i < 14; i++) prop(w, i % 2 ? 'maple' : 'leaf', d + 430 + Phaser.Math.Between(0, 200), 700 + Phaser.Math.Between(-10, 10), 50, 701);
+    } else {
+      g.fillStyle(0xb5835a, 1).fillRoundedRect(d + 400, 640, 260, 100, 16);
+      g.fillStyle(0xf3d98b, 1).fillRoundedRect(d + 412, 650, 236, 80, 12);
+      prop(w, 'bucket', d + 620, 700, 70, 701);
+    }
+    const sand = w.add.zone(d + 530, 690, 260, 120).setDepth(702);
+    w.clickable(sand, () => w.goThen(d + 700, 730, () => this.useSand()), SAND[sea].name.charAt(0).toUpperCase() + SAND[sea].name.slice(1));
 
     // Slide
     const slide = prop(w, 'slide', d + 900, 720, 280);
@@ -77,7 +99,7 @@ export class Outside implements Module {
 
     // Signs above each toy: never hidden behind kids, and they light up
     // for the toy the held child wants.
-    this.sign('sand', 'bucket', d + 530, 640, 'Piaskownica', () => w.goThen(d + 700, 790, () => this.useSand()));
+    this.sign('sand', SAND[sea].wish, d + 530, 560, SAND[sea].name, () => w.goThen(d + 700, 730, () => this.useSand()));
     this.sign('slide', 'slide', d + 900, 360, 'Zjeżdżalnia', () => w.goThen(d + 760, 740, () => this.useSlide()));
     this.sign('swing', 'swing' as EmojiKey, d + 1280, 300, 'Huśtawka', () => w.goThen(d + 1280, 800, () => this.useSwing()));
   }
@@ -104,14 +126,17 @@ export class Outside implements Module {
     const w = this.w;
     w.setPhase('outside');
     this.step = 'dress';
-    this.weather = Phaser.Utils.Array.GetRandom(['sun', 'rain', 'cold'] as Weather[]);
+    const bySeason: Record<Season, Weather[]> = { wiosna: ['sun', 'rain'], lato: ['sun', 'sun', 'rain'], jesien: ['rain', 'sun', 'cold'], zima: ['cold'] };
+    this.weather = Phaser.Utils.Array.GetRandom(bySeason[this.season]);
+    this.trip = w.today.event.kind === 'trip';
+    this.hurtDone = false;
     const info = WEATHER[this.weather];
     sfx.doorbell();
-    prompt(`Idziemy na dwór! Dzisiaj jest ${info.name}. Dzieci idą do szatni. Kliknij dziecko, żeby je ubrać.`);
+    prompt(`${this.trip ? 'Idziemy na wycieczkę do parku!' : 'Idziemy na dwór!'} Dzisiaj jest ${info.name}. Dzieci idą do szatni. Kliknij dziecko, żeby je ubrać.`);
     const s = roomX('szatnia');
     w.presentKids.forEach((kid, i) => {
       kid.mode = 'busy';
-      kid.walkTo(s + 250 + i * 170, 700 + (i % 2) * 90, () => {
+      kid.walkTo(s + 230 + i * 150, 700 + (i % 2) * 80, () => {
         kid.setNeed('dress', info.icon);
         kid.mode = 'free';
         kid.homeRoom = roomIndexAt(s + 300);
@@ -124,6 +149,15 @@ export class Outside implements Module {
     const kids = w.presentKids;
     w.openScene<boolean>('Dress', { kids: kids.map((k) => k.def.id), weather: this.weather }, (ok) => {
       if (!ok) return;
+      if (this.trip) {
+        kids.forEach((kid) => kid.setNeed(null));
+        w.openScene<boolean>('Trip', { kids: kids.map((k) => k.def.id), weather: this.weather }, () => {
+          stat('trips');
+          kids.forEach((k) => befriend(k));
+          this.finish();
+        });
+        return;
+      }
       this.step = 'play';
       this.startWeatherFx();
       prompt('Wszyscy ubrani! Idziemy na plac zabaw. Każde dziecko chce się pobawić czymś innym.');
@@ -132,9 +166,9 @@ export class Outside implements Module {
         kid.mode = 'busy';
         kid.setNeed(null);
         const wish = WISHES[i % WISHES.length];
-        kid.walkTo(this.d + 300 + i * 150, 680 + (i % 2) * 100, () => {
+        kid.walkTo(this.d + 250 + i * 140, 680 + (i % 2) * 70, () => {
           kid.wish = wish.id;
-          kid.setNeed('wish', wish.icon);
+          kid.setNeed('wish', wish.id === 'sand' ? SAND[this.season].wish : wish.icon);
           kid.mode = 'free';
           kid.homeRoom = 0;
         });
@@ -173,7 +207,27 @@ export class Outside implements Module {
     kid.setNeed(null);
     kid.cheer();
     sfx.giggle();
-    if (this.w.presentKids.every((k) => k.need !== 'wish')) {
+    befriend(kid);
+    // Sometimes someone trips while running around
+    if (!this.hurtDone && Math.random() < 0.5) {
+      const others = this.w.presentKids.filter((k) => k.need === null && k.mode === 'free' && k !== kid);
+      if (others.length) {
+        this.hurtDone = true;
+        const hurt = Phaser.Utils.Array.GetRandom(others);
+        this.w.time.delayedCall(1500, () => {
+          hurt.setNeed('hurt');
+          hurt.stop();
+          sfx.sad();
+          prompt(hurt.needText());
+        });
+      }
+    }
+    this.checkAllPlayed();
+  }
+
+  private checkAllPlayed() {
+    if (this.w.presentKids.every((k) => k.need !== 'wish' && k.need !== 'hurt')) {
+      this.countTimer?.remove();
       this.countTimer = this.w.time.delayedCall(5000, () => this.startCount());
     }
   }
@@ -228,19 +282,21 @@ export class Outside implements Module {
       // Build the castle
       this.sandClicks++;
       sfx.pop();
-      w.puff('sparkles', this.d + 530, 760, 1, 50);
-      if (!this.castle) this.castle = prop(w, 'sandcastle', this.d + 540, 800, 40, 703);
+      const sd = SAND[this.season];
+      w.puff(this.season === 'lato' ? 'drop' : 'sparkles', this.d + 530, 660, this.season === 'lato' ? 5 : 1, 50);
+      if (this.season === 'lato') sfx.splash();
+      if (!this.castle) this.castle = prop(w, sd.build, this.d + 560, 700, 40, 703);
       this.castle.setDisplaySize(40 + this.sandClicks * 35, 40 + this.sandClicks * 35);
       if (this.sandClicks >= 3) {
         const kid = this.sandKid;
         this.sandKid = null;
         kid.mode = 'free';
-        say('Piękny zamek!');
+        say(sd.done);
         if (kid.need === 'wish') this.wishDone(kid);
       }
       return;
     }
-    const kid = this.needKid('sand', 'piaskownica');
+    const kid = this.needKid('sand', SAND[this.season].name);
     if (!kid) return;
     w.takeHeld();
     kid.mode = 'busy';
@@ -248,7 +304,7 @@ export class Outside implements Module {
     this.sandClicks = 0;
     this.castle?.destroy();
     this.castle = null;
-    kid.walkTo(this.d + 470, 770, () => prompt('Kliknij piaskownicę trzy razy, żeby zbudować zamek!'), true);
+    kid.walkTo(this.d + 450, 700, () => prompt(SAND[this.season].prompt), true);
   }
 
   private useSwing() {
@@ -296,6 +352,18 @@ export class Outside implements Module {
 
   onKidClick(kid: Kid): boolean {
     const w = this.w;
+    if (kid.need === 'hurt') {
+      w.goThen(kid.x + 110, kid.y, () => w.openScene<boolean>('Hurt', { kidId: kid.def.id }, (ok) => {
+        if (!ok) return;
+        kid.setNeed(null);
+        kid.cheer();
+        befriend(kid);
+        stat('plasters');
+        prompt(`${kid.def.name} już się uśmiecha. Brawo!`);
+        if (this.step === 'play') this.checkAllPlayed();
+      }));
+      return true;
+    }
     if (kid.need === 'dress' && this.step === 'dress') {
       w.goThen(kid.x + 110, kid.y, () => this.openDress());
       return true;
@@ -329,10 +397,10 @@ export class Outside implements Module {
       kid.setBadge(null);
       kid.mode = 'busy';
       kid.homeRoom = null;
-      kid.walkTo(s + 300 + i * 150, 740, () => {
+      kid.walkTo(s + 260 + i * 140, 740, () => {
         kid.setWearing([]);
         sfx.whoosh();
-        kid.walkTo(sala + 250 + i * 170, 680 + (i % 2) * 100, () => (kid.mode = 'free'));
+        kid.walkTo(sala + 220 + i * 150, 680 + (i % 2) * 80, () => (kid.mode = 'free'));
       });
     });
     this.castle?.destroy();

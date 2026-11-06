@@ -6,6 +6,7 @@ import { prop } from './draw';
 import { addStars, prompt } from '../lib/state';
 import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
+import { stat, befriend } from './progress';
 
 type Toilet = {
   img: Phaser.GameObjects.Image;
@@ -119,6 +120,17 @@ export class Bathroom implements Module {
   private useSink() {
     const w = this.w;
     const kid = w.holding;
+    const brushing = w.presentKids.filter((k) => k.need === 'teeth');
+    if (!kid && brushing.length) {
+      w.openScene<boolean>('Teeth', { kids: brushing.map((k) => k.def.id) }, (ok) => {
+        if (!ok) return;
+        brushing.forEach((k) => k.setNeed(null));
+        stat('teeth');
+        addStars();
+        prompt('Wszystkie ząbki czyste i błyszczące!');
+      });
+      return;
+    }
     if (!kid) return prompt('Przyprowadź dziecko do umywalki.');
     if (kid.need !== 'wash') return say('Rączki są już czyste!');
     w.takeHeld();
@@ -145,6 +157,7 @@ export class Bathroom implements Module {
             kid.cheer();
             sfx.giggle();
             addStars();
+            befriend(kid);
             say('Czyste rączki! Brawo!');
           }
         });

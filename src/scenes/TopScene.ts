@@ -66,6 +66,11 @@ export class TopScene extends Overlay {
 
   private makeBase() {
     const parts: Phaser.GameObjects.GameObject[] = [];
+    const big: Record<string, EmojiKey> = { cupcake: 'cupcake', cake: 'cake', tree: 'xmastree', egg: 'easteregg' };
+    if (this.dish.base !== 'porridge') {
+      parts.push(this.add.image(0, 0, big[this.dish.base]).setDisplaySize(this.dish.base === 'egg' ? 230 : 300, this.dish.base === 'egg' ? 230 : 300));
+      return this.add.container(CX, CY, parts);
+    }
     if (this.dish.base === 'porridge') {
       const g = this.add.graphics();
       g.fillStyle(0xffffff, 1).fillEllipse(0, 0, 300, 90);
@@ -92,7 +97,7 @@ export class TopScene extends Overlay {
     const name = this.add.text(0, -30, kid.name, { fontFamily: FONT, fontSize: '40px', fontStyle: '800', color: inkHex }).setOrigin(0.5);
     const tops = o.toppings.map((k, i) => this.add.image(-60 + i * 120, 70, k).setDisplaySize(90, 90).setName(`t-${k}`));
     this.card = this.add.container(190, 400, [bg, face, name, ...tops]);
-    const what = this.dish.base === 'porridge' ? 'Owsianka' : 'Babeczka';
+    const what = { porridge: 'Owsianka', cupcake: 'Babeczka', cake: 'Tort', tree: 'Choinka', egg: 'Pisanka' }[this.dish.base];
     prompt(`${what} dla ${kid.gen}. ${kid.girl ? 'Ona' : 'On'} chce: ${o.toppings.map(acc).join(' i ')}.`);
   }
 
@@ -118,9 +123,11 @@ export class TopScene extends Overlay {
       say(nom(key));
       // Place a few pieces on top so it looks decorated
       piece.destroy();
-      const top = this.dish.base === 'porridge' ? -5 : -70;
+      const top = { porridge: -5, cupcake: -70, cake: -60, tree: 0, egg: 0 }[this.dish.base];
+      const spread = this.dish.base === 'tree' ? 70 : 80;
       for (let i = 0; i < 3; i++) {
-        const t = this.add.image(Phaser.Math.Between(-80, 80), top + Phaser.Math.Between(-18, 12), key).setDisplaySize(60, 60).setAngle(Phaser.Math.Between(-30, 30));
+        const ty = this.dish.base === 'tree' || this.dish.base === 'egg' ? Phaser.Math.Between(-80, 80) : top + Phaser.Math.Between(-18, 12);
+        const t = this.add.image(Phaser.Math.Between(-spread, spread) * (this.dish.base === 'tree' ? (1 - (ty + 80) / 320) + 0.3 : 1), ty, key).setDisplaySize(60, 60).setAngle(Phaser.Math.Between(-30, 30));
         t.setScale(0);
         this.tweens.add({ targets: t, scaleX: 60 / 256, scaleY: 60 / 256, duration: 200, delay: i * 80, ease: 'Back.out' });
         this.item.add(t);
@@ -131,6 +138,53 @@ export class TopScene extends Overlay {
     this.input.on('pointerup', up);
   }
 
+  /** Birthday cake: put in six candles and light them. Tree: put the star on top. */
+  private candles(item: Phaser.GameObjects.Container) {
+    if (this.dish.base === 'tree') {
+      prompt('Na koniec gwiazda na czubek! Kliknij choinkę.');
+      const hit = this.add.zone(CX, CY, 300, 320).setInteractive({ useHandCursor: true });
+      hit.once('pointerdown', () => {
+        hit.destroy();
+        const st = this.add.image(0, -150, 'starxmas').setDisplaySize(90, 90).setScale(0);
+        item.add(st);
+        this.tweens.add({ targets: st, scaleX: 90 / 256, scaleY: 90 / 256, angle: 360, duration: 500, ease: 'Back.out' });
+        sfx.cheer();
+        this.bravo('Choinka gotowa!', () => this.close(true), 170);
+      });
+      return;
+    }
+    const total = 6;
+    const placed: Phaser.GameObjects.Image[] = [];
+    prompt(`Teraz świeczki! Kliknij tort ${total} razy.`);
+    const hit = this.add.zone(CX, CY, 320, 300).setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => {
+      if (placed.length >= total) return;
+      const i = placed.length;
+      const c = this.add.image(-100 + i * 40, -150, 'candle').setDisplaySize(60, 60);
+      item.add(c);
+      placed.push(c);
+      sfx.pop();
+      say(['jeden', 'dwa', 'trzy', 'cztery', 'pięć', 'sześć'][i]);
+      if (placed.length === total) {
+        hit.destroy();
+        prompt('Zapal świeczki! Kliknij każdą świeczkę.');
+        let lit = 0;
+        placed.forEach((c2) => {
+          const z = this.add.zone(CX + c2.x, CY + c2.y, 46, 70).setInteractive({ useHandCursor: true });
+          z.once('pointerdown', () => {
+            z.destroy();
+            const f = this.add.ellipse(c2.x, c2.y - 38, 14, 24, 0xffa53a);
+            item.add(f);
+            this.tweens.add({ targets: f, scaleY: 1.3, duration: 150, yoyo: true, repeat: -1 });
+            sfx.click();
+            lit++;
+            if (lit === total) this.bravo('Tort gotowy! Sto lat!', () => this.close(true), 170);
+          });
+        });
+      }
+    });
+  }
+
   private finishItem() {
     sfx.star();
     const item = this.item!;
@@ -138,13 +192,18 @@ export class TopScene extends Overlay {
     this.time.delayedCall(700, () => {
       const slot = this.done.length;
       this.done.push(item);
-      say(this.dish.base === 'porridge' ? 'Pyszna owsianka!' : 'Piękna babeczka!');
+      say({ porridge: 'Pyszna owsianka!', cupcake: 'Piękna babeczka!', cake: 'Piękny tort!', tree: 'Śliczna choinka!', egg: 'Piękna pisanka!' }[this.dish.base]);
+      if (this.dish.base === 'cake' || this.dish.base === 'tree') {
+        // The cake/tree stays in the middle for the next step
+        this.candles(item);
+        return;
+      }
       this.tweens.add({
-        targets: item, x: 1250 + (slot % 3) * 120, y: 370 + Math.floor(slot / 3) * 110, scale: 0.32, duration: 600, ease: 'Quad.inOut',
+        targets: item, x: 1235 + (slot % 4) * 92, y: 360 + Math.floor(slot / 4) * 100, scale: 0.28, duration: 600, ease: 'Quad.inOut',
         onComplete: () => {
           this.idx++;
           if (this.idx < this.orders.length) this.nextOrder();
-          else this.bravo(this.dish.base === 'porridge' ? 'Owsianki gotowe!' : 'Babeczki gotowe!', () => this.close(true), 170);
+          else this.bravo({ porridge: 'Owsianki gotowe!', cupcake: 'Babeczki gotowe!', cake: 'Tort gotowy!', tree: 'Choinka gotowa!', egg: 'Pisanki gotowe!' }[this.dish.base], () => this.close(true), 170);
         },
       });
     });

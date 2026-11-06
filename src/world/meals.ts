@@ -10,6 +10,7 @@ import type { EmojiKey } from '../lib/assets';
 import { dishFor, DISHES, type Dish } from './menu';
 import { sayHover } from '../lib/voice';
 import { save } from '../lib/state';
+import { stat, befriend, unlocked } from './progress';
 
 export type Order = { kidId: string; fillings: EmojiKey[] };
 export type Drink = { key: EmojiKey; name: string; color: number };
@@ -29,6 +30,7 @@ export class Meals implements Module {
   private seated: Kid[] = [];
   private arrived = 0;
   private dish: Dish = DISHES.kanapki;
+  private birthdayKid: string | null = null;
   private station!: Phaser.GameObjects.Image;
 
   constructor(private w: WorldScene) {
@@ -54,6 +56,9 @@ export class Meals implements Module {
     state.meal = { step: 'cooking', name, sandwiches: false, drinks: false };
     this.drink = DRINKS[name] ?? DRINKS['Śniadanie'];
     this.dish = dishFor(name, save.day);
+    const ev = w.today.event;
+    this.birthdayKid = ev.kind === 'birthday' && name === 'Podwieczorek' ? ev.kidId : null;
+    if (this.birthdayKid) this.dish = DISHES.tort;
     this.station.setTexture(this.dish.icon).setDisplaySize(120, 120);
     this.seated = w.presentKids;
     this.orders = this.seated.map((kid) => ({
@@ -87,7 +92,9 @@ export class Meals implements Module {
     const [key, data] =
       d.kind === 'sandwich' ? ['Sandwich', { orders: this.orders }]
       : d.kind === 'pot' ? ['Pot', { dish: d, kids }]
-      : ['Top', { dish: d, orders: kids.map((kidId) => ({ kidId, toppings: Phaser.Utils.Array.Shuffle([...d.toppings]).slice(0, 2) })) }];
+      : this.birthdayKid
+        ? ['Top', { dish: d, orders: [{ kidId: kids.includes(this.birthdayKid) ? this.birthdayKid : kids[0], toppings: Phaser.Utils.Array.Shuffle([...d.toppings]).slice(0, 3) }] }]
+        : ['Top', { dish: d, orders: kids.map((kidId) => ({ kidId, toppings: Phaser.Utils.Array.Shuffle([...d.toppings]).slice(0, 2) })) }];
     this.w.openScene<boolean>(key, data, (done) => done && this.cooked('Food'));
   }
 
@@ -136,13 +143,24 @@ export class Meals implements Module {
   private serve() {
     const w = this.w;
     state.meal.step = 'eating';
-    prompt(`Smacznego! Dzisiaj ${this.dish.name}.`);
+    if (this.birthdayKid) {
+      const b = this.seated.find((k) => k.def.id === this.birthdayKid);
+      prompt(`Sto lat, sto lat! Wszystkiego najlepszego${b ? ', ' + b.def.name : ''}!`);
+      sfx.stoLat();
+      if (b) {
+        b.cheer();
+        w.puff('party', b.x, b.y - 150, 6, 60);
+        befriend(b);
+      }
+      save.birthdays++;
+      stat('birthdays');
+    } else prompt(`Smacznego! Dzisiaj ${this.dish.name}.`);
     const plates: Phaser.GameObjects.Image[] = [];
     this.seated.forEach((_, i) => {
       const seat = this.seats[i];
-      const plate = w.add.image(seat.x - 20, 572, this.dish.icon).setDisplaySize(75, 75).setDepth(660).setScale(0);
-      const cup = w.add.image(seat.x + 45, 562, this.drink.key).setDisplaySize(50, 50).setDepth(660);
-      w.tweens.add({ targets: plate, scale: 75 / 256, duration: 300, delay: i * 120, ease: 'Back.out' });
+      const plate = w.add.image(seat.x - 15, 572, this.dish.icon).setDisplaySize(62, 62).setDepth(660).setScale(0);
+      const cup = w.add.image(seat.x + 35, 562, this.drink.key).setDisplaySize(40, 40).setDepth(660);
+      w.tweens.add({ targets: plate, scale: 62 / 256, duration: 300, delay: i * 120, ease: 'Back.out' });
       plates.push(plate, cup);
     });
     w.time.delayedCall(1200, () => {
@@ -164,7 +182,7 @@ export class Meals implements Module {
     state.meal.step = 'cleaning';
     const sala = roomX('sala');
     this.seated.forEach((kid, i) => {
-      kid.walkTo(sala + 300 + i * 180, 700 + (i % 2) * 80, () => {
+      kid.walkTo(sala + 220 + i * 150, 700 + (i % 2) * 60, () => {
         kid.mode = 'free';
         kid.homeRoom = null;
       });
@@ -200,6 +218,13 @@ export class Meals implements Module {
         if (this.crumbs.length === 0) {
           addStars(3);
           say('Czysto! Brawo!');
+          stat('meals');
+          stat(`dish_${this.dish.id}`);
+          if (state.meal.name === 'Obiad' && unlocked('teeth')) {
+            // After lunch everyone brushes their teeth
+            this.seated.filter((k) => k.present).forEach((k) => k.setNeed('teeth'));
+            w.time.delayedCall(1200, () => prompt('Po obiedzie myjemy ząbki! Idź do łazienki i kliknij umywalkę.'));
+          }
           const next = { Śniadanie: 9 * 60 + 30, Obiad: 12 * 60 + 30, Podwieczorek: 15 * 60 } as Record<string, number>;
           w.backToFree(next[state.meal.name]);
         }

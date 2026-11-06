@@ -15,7 +15,7 @@ function ac() {
   return ctx;
 }
 
-function tone(freq: number, start: number, dur: number, type: OscillatorType = 'sine', vol = 0.5, slideTo?: number) {
+export function tone(freq: number, start: number, dur: number, type: OscillatorType = 'sine', vol = 0.5, slideTo?: number) {
   const c = ac();
   const o = c.createOscillator();
   const g = c.createGain();
@@ -65,6 +65,11 @@ export const sfx = {
   cheer() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.09, 0.25, 'triangle', 0.3)); },
   thermo() { tone(2000, 0, 0.1, 'square', 0.15); tone(2000, 0.18, 0.1, 'square', 0.15); },
   pour() { noise(0, 0.25, 0.12, 2500, 1800); },
+  /** A cheerful birthday tune */
+  stoLat() {
+    const n = [67, 67, 64, 67, 67, 64, 67, 69, 67, 65, 64, 62, 0, 65, 65, 62, 65, 65, 62, 65, 67, 65, 64, 62, 60];
+    n.forEach((m, i) => m && tone(440 * Math.pow(2, (m - 69) / 12), i * 0.22, 0.3, 'triangle', 0.3));
+  },
   sad() { tone(440, 0, 0.3, 'sine', 0.25, 330); },
 };
 

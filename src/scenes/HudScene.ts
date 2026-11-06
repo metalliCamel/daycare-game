@@ -23,6 +23,7 @@ export class HudScene extends Phaser.Scene {
   private shopBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
   private musicBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
   private menuBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
+  private albumBtn!: { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; z: Phaser.GameObjects.Zone };
   private mapButtons: { bg: Phaser.GameObjects.Graphics; dot: Phaser.GameObjects.Arc; x: number }[] = [];
 
   constructor() {
@@ -51,7 +52,8 @@ export class HudScene extends Phaser.Scene {
       return { g, t, z };
     };
     this.shopBtn = mkBtn(300, '🛍️', 'Sklepik', () => bus.emit('open-shop'));
-    this.menuBtn = mkBtn(500, '💾', 'Zapisz i wyjdź', () => bus.emit('open-menu'));
+    this.menuBtn = mkBtn(600, '💾', 'Przerwa i zapis', () => bus.emit('open-menu'));
+    this.albumBtn = mkBtn(500, '📖', 'Mój album', () => bus.emit('open-album'));
     const music = (this.musicBtn = mkBtn(400, isMusicOn() ? '🎵' : '🔇', 'Muzyka', () => {
       const on = !isMusicOn();
       setMusic(on);
@@ -134,12 +136,25 @@ export class HudScene extends Phaser.Scene {
 
     const onMinigame = (on: boolean) => {
       this.map.setVisible(!on);
-      for (const b of [this.shopBtn, this.musicBtn, this.menuBtn]) {
+      for (const b of [this.shopBtn, this.musicBtn, this.menuBtn, this.albumBtn]) {
         b.g.setVisible(!on);
         b.t.setVisible(!on);
         if (b.z.input) b.z.input.enabled = !on;
       }
     };
+    // Little pop-up for new stickers and secrets
+    const onToast = (t: { icon: string; text: string }) => {
+      const g = this.add.graphics();
+      g.fillStyle(0xffffff, 0.97).fillRoundedRect(-330, -45, 660, 90, 45);
+      g.lineStyle(5, 0xffd45c, 1).strokeRoundedRect(-330, -45, 660, 90, 45);
+      const ic = this.add.image(-280, 0, t.icon).setDisplaySize(60, 60);
+      const tx = this.add.text(-235, 0, t.text, { fontFamily: FONT, fontSize: '28px', fontStyle: '800', color: inkHex, wordWrap: { width: 540 } }).setOrigin(0, 0.5);
+      const c = this.add.container(GAME_W / 2, -60, [g, ic, tx]).setDepth(100);
+      this.tweens.add({ targets: c, y: 170, duration: 400, ease: 'Back.out' });
+      this.tweens.add({ targets: c, y: -60, delay: 3500, duration: 400, onComplete: () => c.destroy() });
+    };
+    bus.on('toast', onToast);
+    this.events.once('shutdown', () => bus.off('toast', onToast));
     bus.on('minigame', onMinigame);
     bus.on('stars', onStars);
     bus.on('clock', onClock);

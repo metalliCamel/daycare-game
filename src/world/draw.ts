@@ -5,7 +5,7 @@ import type { EmojiKey } from '../lib/assets';
 const H = 900;
 
 /** x offsets of the six dining seats inside the dining room */
-export const DINING_SEATS = [380, 550, 720, 890, 1060, 1230];
+export const DINING_SEATS = [360, 485, 610, 735, 860, 985, 1110, 1235];
 
 function darken(c: number, f = 0.85) {
   const col = Phaser.Display.Color.IntegerToColor(c);
@@ -80,8 +80,7 @@ function decorate(scene: Phaser.Scene, g: Phaser.GameObjects.Graphics) {
   const s = x0('szatnia');
   g.fillStyle(0xb5835a, 1).fillRect(s + 180, 250, 1000, 26);
   g.fillStyle(0xc68c5c, 1).fillRoundedRect(s + 180, 500, 1000, 60, 14);
-  prop(scene, 'plant', s + 1420, 640, 180);
-  windowAt(g, s + 1260, 220, 200, 150);
+  // (the right wall holds the day board and the hamster's cage)
 
   // Playroom
   const p = x0('sala');
@@ -101,7 +100,7 @@ function decorate(scene: Phaser.Scene, g: Phaser.GameObjects.Graphics) {
   t.fillStyle(0xe7a96b, 1).fillRoundedRect(j + 290, 560, 1020, 40, 12);
   t.fillStyle(0xcf8f52, 1).fillRect(j + 310, 600, 980, 30);
   t.fillStyle(0xb5835a, 1).fillRect(j + 340, 630, 30, 120).fillRect(j + 1230, 630, 30, 120);
-  for (let i = 0; i < 6; i++) prop(scene, 'chair', DINING_SEATS[i] + j, 610, 160, 560);
+  for (let i = 0; i < DINING_SEATS.length; i++) prop(scene, 'chair', DINING_SEATS[i] + j, 610, 130, 560);
 
   // Kitchen: counter with cabinets, fridge
   const k = x0('kuchnia');

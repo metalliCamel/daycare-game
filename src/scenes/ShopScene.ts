@@ -23,12 +23,12 @@ export class ShopScene extends Overlay {
   private render() {
     this.children.list.filter((o) => o.getData?.('card')).forEach((o) => o.destroy());
     SHOP.forEach((item, i) => {
-      const x = 240 + (i % 5) * 280;
-      const y = 280 + Math.floor(i / 5) * 290;
+      const x = 170 + (i % 8) * 180;
+      const y = 250 + Math.floor(i / 8) * 270;
       const owned = save.decor.includes(item.id);
       const label = owned ? `${item.name} ✓` : `${item.name}\n⭐ ${item.price}`;
       const color = owned ? 0xd8f5d8 : save.stars >= item.price ? 0xffffff : 0xeeeeee;
-      const card = this.pictureButton(x, y, item.key, label, () => this.buy(item.id), color, 210);
+      const card = this.pictureButton(x, y, item.key, label, () => this.buy(item.id), color, 160);
       card.setData('card', true);
       if (!owned && save.stars < item.price) card.setAlpha(0.6);
     });
@@ -46,11 +46,15 @@ export class ShopScene extends Overlay {
       return;
     }
     save.decor.push(id);
+    if (item.outfit) {
+      save.outfits.push(id);
+      save.outfit = id;
+    }
     persist();
     bus.emit('decor-bought', id);
     sfx.cheer();
     const room = ROOMS.find((r) => r.id === item.room)!;
-    say(`Kupione! ${item.name} jest teraz w pokoju: ${room.name}.`);
+    say(item.outfit ? `Kupione! ${item.name} — ciocia już to nosi. Zmienisz w menu przerwy.` : `Kupione! ${item.name} jest teraz w pokoju: ${room.name}. Możesz ją przesunąć myszką.`);
     this.render();
   }
 }

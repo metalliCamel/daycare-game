@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { loadSave, writeSave, type SaveData } from './save';
 import { sfx } from './sound';
+import { playClip } from './clips';
 
 /** Shared game state + an event bus that the world, HUD and minigames all use. */
 export const bus = new Phaser.Events.EventEmitter();
@@ -9,7 +10,7 @@ export const bus = new Phaser.Events.EventEmitter();
  * The day runs through phases. The clock only ticks during "free" time, so
  * structured activities never feel rushed.
  */
-export type Phase = 'dropoff' | 'free' | 'meal' | 'outside' | 'nap' | 'pickup' | 'summary';
+export type Phase = 'dropoff' | 'free' | 'meal' | 'outside' | 'nap' | 'pickup' | 'summary' | 'special';
 export type MealStep = 'cooking' | 'serving' | 'eating' | 'cleaning';
 
 export const save: SaveData = loadSave();
@@ -34,6 +35,8 @@ export function addStars(n = 1) {
   sfx.star();
   bus.emit('stars', save.stars);
   persist();
+  // A parent's recorded "Brawo!" for the bigger achievements
+  if (n >= 3) setTimeout(() => playClip('bravo', 30000), 900);
 }
 
 export function spendStars(n: number) {

@@ -7,6 +7,8 @@ import { FONT, inkHex } from '../lib/layout';
 import { state, save, addStars, prompt, persist } from '../lib/state';
 import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
+import { unlocked, NEWS, stat } from './progress';
+import { Garden } from './garden';
 
 type Visit = { parent: Walker; kid: Kid; slot: number; mode: 'dropoff' | 'pickup' | 'sick' };
 
@@ -26,8 +28,13 @@ export class Cloakroom implements Module {
 
   constructor(private w: WorldScene) {
     const s = this.s;
-    KIDS.forEach((def, i) => {
-      const x = s + 270 + i * 165;
+    // Hooks for the kids in the group (plus a new child joining today)
+    const ev = w.today.event;
+    const ids = [...save.group, ...(ev.kind === 'newkid' && !save.group.includes(ev.kidId) ? [ev.kidId] : [])];
+    const defs = KIDS.filter((k) => ids.includes(k.id));
+    const gap = defs.length > 6 ? 128 : 165;
+    defs.forEach((def, i) => {
+      const x = s + 260 + i * gap;
       // Name sign with the child's face above each hook
       const g = w.add.graphics().setDepth(-70);
       g.fillStyle(0xffffff, 1).fillRoundedRect(x - 50, 130, 100, 100, 20);
@@ -60,11 +67,16 @@ export class Cloakroom implements Module {
 
   startDropoff() {
     this.phaseMode = 'dropoff';
-    this.queue = Phaser.Utils.Array.Shuffle(KIDS.map((k) => k.id));
-    this.feverKid = Math.random() < 0.3 ? Phaser.Utils.Array.GetRandom(this.queue) : null;
+    const ev = this.w.today.event;
+    this.queue = Phaser.Utils.Array.Shuffle([...save.group]);
+    // A new child comes last, so there's time for them
+    if (ev.kind === 'newkid' && !save.group.includes(ev.kidId)) this.queue.push(ev.kidId);
+    this.feverKid = unlocked('trouble') && Math.random() < 0.3 ? Phaser.Utils.Array.GetRandom(save.group) : null;
     this.hooks.forEach((h) => h.coat.setVisible(false));
     this.spawnTimer = 1500;
-    prompt(`Dzień ${save.day}. Dzień dobry! Dzieci przychodzą do przedszkola. Przywitaj je w szatni.`);
+    const news = NEWS[save.level] ? ` ${NEWS[save.level]}` : '';
+    const intro = this.w.today.intro();
+    prompt(`Dzień ${save.day}. Dzień dobry!${news}${intro ? ' ' + intro : ''} Dzieci przychodzą. Przywitaj je w szatni.`);
   }
 
   // ---------- Afternoon ----------
@@ -122,6 +134,7 @@ export class Cloakroom implements Module {
       kid.setPosition(this.s - 240, 780);
       kid.mode = 'busy';
       kid.setWearing(['coat']);
+      this.w.today.dress(kid);
       kid.walkTo(x + 100, 780, () => kid.setNeed('check'));
       prompt(`${kid.def.parentLabel} przyprowadza ${kid.def.acc}. Kliknij dziecko, żeby się przywitać.`);
     } else {
@@ -185,6 +198,17 @@ export class Cloakroom implements Module {
       }
       // Healthy: say hello, parent waves goodbye, coat goes on the hook
       kid.setNeed('coat');
+      if (w.today.isNewKid(kid)) {
+        // First day: a bit scared — a cuddle with the teddy helps
+        kid.setNeed('sad');
+        kid.mode = 'free';
+        kid.homeRoom = roomIndexAt(this.s + 300);
+        state.present.push(kid.def.id);
+        sfx.sad();
+        prompt(`${kid.def.name} pierwszy raz jest w przedszkolu i jest ${kid.adj('jej', 'mu')} smutno. Przynieś misia z sali zabaw!`);
+        if (v) this.leave(v, false);
+        return;
+      }
       kid.mode = 'free';
       kid.homeRoom = roomIndexAt(this.s + 300);
       state.present.push(kid.def.id);
@@ -276,7 +300,13 @@ export class Cloakroom implements Module {
     addStars(3);
     w.setPhase('summary');
     w.openScene<'next'>('Summary', { day: save.day, stars: state.starsToday, total: save.stars }, () => {
+      // Overnight: the garden grows, the group and the daily routine grow
+      Garden.grow(save.day);
+      stat('days');
       save.day++;
+      save.level++;
+      if (save.level >= 2 && !save.group.includes('maja')) save.group.push('maja');
+      if (save.level >= 3 && !save.group.includes('stas')) save.group.push('stas');
       persist();
       w.scene.restart();
     });

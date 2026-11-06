@@ -2,7 +2,7 @@ import { Overlay } from './Overlay';
 import { GAME_W, FONT, inkHex } from '../lib/layout';
 import { KIDS } from '../objects/Kid';
 import { bigButton } from '../lib/ui';
-import { prompt } from '../lib/state';
+import { prompt, save } from '../lib/state';
 import { stars } from '../lib/plural';
 import { auntieVoc } from '../lib/names';
 import { sfx } from '../lib/sound';
@@ -28,8 +28,9 @@ export class SummaryScene extends Overlay {
     this.background(0xfde9c9);
     sfx.cheer();
     this.heading(`Koniec dnia ${this.day}!`, 120, 84);
-    KIDS.forEach((k, i) => {
-      const img = this.add.image(GAME_W / 2 + (i - 2.5) * 170, 300, k.key).setDisplaySize(140, 140);
+    const group = KIDS.filter((k) => save.group.includes(k.id));
+    group.forEach((k, i) => {
+      const img = this.add.image(GAME_W / 2 + (i - (group.length - 1) / 2) * 150, 300, k.key).setDisplaySize(130, 130);
       this.tweens.add({ targets: img, y: 280, duration: 400, delay: i * 90, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     });
     this.add.image(GAME_W / 2 - 160, 470, 'star').setDisplaySize(110, 110);

@@ -6,6 +6,8 @@ import { prop } from './draw';
 import { addStars, prompt } from '../lib/state';
 import { say } from '../lib/voice';
 import { sfx, playLullaby, playDayMusic } from '../lib/sound';
+import { playClip } from '../lib/clips';
+import { befriend } from './progress';
 
 type Bed = { x: number; kid: Kid | null; blanket: Phaser.GameObjects.Graphics; tucked: boolean; inBed: boolean };
 type Step = 'walk' | 'tuck' | 'light' | 'music' | 'sleep' | null;
@@ -25,13 +27,13 @@ export class Nap implements Module {
 
   constructor(private w: WorldScene) {
     const b = this.b;
-    for (let i = 0; i < 6; i++) {
-      const x = b + 150 + i * 225;
-      prop(w, 'bed', x, BED_Y, 220, BED_Y - 40);
+    for (let i = 0; i < 8; i++) {
+      const x = b + 130 + i * 168;
+      prop(w, 'bed', x, BED_Y, 165, BED_Y - 40);
       const blanket = w.add.graphics().setDepth(BED_Y + 5).setVisible(false);
-      blanket.fillStyle([0xff9fb2, 0x9fd3f5, 0xffd45c, 0x8fd9b6, 0xc7a8ff, 0xffb38a][i], 1);
-      blanket.fillRoundedRect(x - 70, BED_Y - 82, 165, 56, 20);
-      blanket.lineStyle(4, 0xffffff, 0.8).strokeRoundedRect(x - 70, BED_Y - 82, 165, 56, 20);
+      blanket.fillStyle([0xff9fb2, 0x9fd3f5, 0xffd45c, 0x8fd9b6, 0xc7a8ff, 0xffb38a, 0xa8e6cf, 0xffd3b6][i], 1);
+      blanket.fillRoundedRect(x - 50, BED_Y - 66, 125, 44, 16);
+      blanket.lineStyle(4, 0xffffff, 0.8).strokeRoundedRect(x - 50, BED_Y - 66, 125, 44, 16);
       this.beds.push({ x, kid: null, blanket, tucked: false, inBed: false });
     }
     // Light switch and music box on the wall / shelf
@@ -62,9 +64,9 @@ export class Nap implements Module {
       const bed = this.beds[i];
       bed.kid = kid;
       kid.mode = 'busy';
-      kid.walkTo(bed.x - 25, BED_Y - 48, () => {
+      kid.walkTo(bed.x - 20, BED_Y - 36, () => {
         kid.fixedDepth = BED_Y;
-        kid.sprite.setScale(kid.sprite.scaleX * 0.85);
+        kid.sprite.setScale(kid.sprite.scaleX * 0.72);
         bed.inBed = true;
         arrived++;
         if (arrived === kids.length) this.step = 'tuck';
@@ -108,6 +110,7 @@ export class Nap implements Module {
         if (n >= 3) {
           kid.setNeed(null);
           this.pats.delete(kid);
+          befriend(kid);
           say('Ciii... śpij słodko.');
         } else say('Ciii...');
       });
@@ -136,6 +139,7 @@ export class Nap implements Module {
     }
     this.step = 'sleep';
     playLullaby();
+    playClip('night');
     prompt('Dzieci zasypiają... Jeśli ktoś się obudzi, kliknij go trzy razy, żeby pogłaskać.');
     this.zzz = w.time.addEvent({
       delay: 900, loop: true,
@@ -193,10 +197,10 @@ export class Nap implements Module {
       bed.tucked = false;
       bed.kid = null;
       if (!kid) return;
-      kid.sprite.setScale(kid.sprite.scaleX / 0.85);
+      kid.sprite.setScale(kid.sprite.scaleX / 0.72);
       kid.fixedDepth = null;
       kid.setNeed(null);
-      kid.walkTo(bed.x, 800, () => kid.walkTo(sala + 250 + i * 170, 690 + (i % 2) * 100, () => (kid.mode = 'free')));
+      kid.walkTo(bed.x, 800, () => kid.walkTo(sala + 220 + i * 150, 690 + (i % 2) * 80, () => (kid.mode = 'free')));
     });
     addStars(3);
     w.time.delayedCall(3000, () => w.backToFree(14 * 60));

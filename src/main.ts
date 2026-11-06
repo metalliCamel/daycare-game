@@ -15,6 +15,15 @@ import { SummaryScene } from './scenes/SummaryScene';
 import { PotScene } from './scenes/PotScene';
 import { TopScene } from './scenes/TopScene';
 import { PauseScene } from './scenes/PauseScene';
+import { QuizScene } from './scenes/QuizScene';
+import { TripScene } from './scenes/TripScene';
+import { HurtScene } from './scenes/HurtScene';
+import { TeethScene } from './scenes/TeethScene';
+import { SortScene } from './scenes/SortScene';
+import { MusicScene } from './scenes/MusicScene';
+import { PetScene } from './scenes/PetScene';
+import { AlbumScene } from './scenes/AlbumScene';
+import { VoiceScene } from './scenes/VoiceScene';
 import { save, state } from './lib/state';
 
 const start = () => {
@@ -33,6 +42,7 @@ const start = () => {
     scene: [
       BootScene, TitleScene, WorldScene,
       SandwichScene, PotScene, TopScene, PourScene, HealthScene, DressScene, ChoiceScene, CraftScene, ShopScene, SummaryScene, PauseScene,
+      QuizScene, TripScene, HurtScene, TeethScene, SortScene, MusicScene, PetScene, AlbumScene, VoiceScene,
       HudScene,
     ],
   });

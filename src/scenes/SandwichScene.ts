@@ -190,7 +190,7 @@ export class SandwichScene extends Overlay {
       this.done.push(s);
       say('Pyszna kanapka!');
       this.tweens.add({
-        targets: s, x: 1250 + (slot % 3) * 120, y: 370 + Math.floor(slot / 3) * 110, scale: 100 / 256,
+        targets: s, x: 1235 + (slot % 4) * 92, y: 360 + Math.floor(slot / 4) * 100, scale: 90 / 256,
         delay: 500, duration: 600, ease: 'Quad.inOut',
         onComplete: () => {
           this.orderIdx++;
