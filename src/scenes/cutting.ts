@@ -79,7 +79,7 @@ export function cutSequence(scene: Phaser.Scene, keys: EmojiKey[], x: number, y:
         scene.input.off('pointermove', onMove);
         knife.destroy();
         c.removeAll(true);
-        addStars();
+        sfx.star();
         say(CUT_NAMES[key]?.done ?? 'Pokrojone!');
         for (let i = 0; i < 4; i++) {
           const s = scene.add.image(0, 0, key).setDisplaySize(170, 170).setScale(0.3, 0.6).setAngle(-10);

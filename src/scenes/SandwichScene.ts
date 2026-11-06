@@ -180,7 +180,7 @@ export class SandwichScene extends Overlay {
 
   private finishSandwich() {
     this.hintTimer?.remove();
-    addStars();
+    sfx.star();
     const parts = this.stack;
     this.stack = [];
     this.time.delayedCall(400, () => {

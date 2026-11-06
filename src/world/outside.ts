@@ -4,7 +4,7 @@ import type { Kid } from '../objects/Kid';
 import { roomX, roomIndexAt } from '../lib/rooms';
 import { prop } from './draw';
 import { state, addStars, prompt } from '../lib/state';
-import { say } from '../lib/voice';
+import { say, sayHover } from '../lib/voice';
 import { sfx } from '../lib/sound';
 import type { EmojiKey } from '../lib/assets';
 
@@ -42,6 +42,8 @@ export class Outside implements Module {
   private busySlide = false;
   private ring!: Phaser.GameObjects.Arc;
   private weatherFx: Phaser.Time.TimerEvent | null = null;
+  /** big icons above each playground toy, always clickable */
+  private signs = new Map<'swing' | 'slide' | 'sand', Phaser.GameObjects.Container>();
   private countTimer: Phaser.Time.TimerEvent | null = null;
 
   constructor(private w: WorldScene) {
@@ -72,6 +74,30 @@ export class Outside implements Module {
     this.ring = w.add.circle(d + 1280, 700, 60, 0x6bd66b, 0).setStrokeStyle(8, 0x6bd66b, 0).setDepth(642);
     const swingZone = w.add.zone(d + 1280, 560, 330, 340).setDepth(643);
     w.clickable(swingZone, () => w.goThen(d + 1280, 800, () => this.useSwing()), 'Huśtawka');
+
+    // Signs above each toy: never hidden behind kids, and they light up
+    // for the toy the held child wants.
+    this.sign('sand', 'bucket', d + 530, 640, 'Piaskownica', () => w.goThen(d + 700, 790, () => this.useSand()));
+    this.sign('slide', 'slide', d + 900, 360, 'Zjeżdżalnia', () => w.goThen(d + 760, 740, () => this.useSlide()));
+    this.sign('swing', 'swing' as EmojiKey, d + 1280, 300, 'Huśtawka', () => w.goThen(d + 1280, 800, () => this.useSwing()));
+  }
+
+  private sign(id: 'swing' | 'slide' | 'sand', icon: EmojiKey, x: number, y: number, name: string, onClick: () => void) {
+    const w = this.w;
+    const ring = w.add.rectangle(0, 0, 124, 104, 0xffd45c, 0).setStrokeStyle(10, 0xffd45c, 1);
+    const bg = w.add.graphics();
+    bg.fillStyle(0x8b5a2b, 1).fillRect(-8, 40, 16, 70);
+    bg.fillStyle(0xc68c5c, 1).fillRoundedRect(-55, -45, 110, 90, 12);
+    bg.lineStyle(5, 0x8b5a2b, 1).strokeRoundedRect(-55, -45, 110, 90, 12);
+    const img = w.add.image(0, 0, icon).setDisplaySize(70, 70);
+    const arrow = w.add.text(0, -95, '⬇', { fontSize: '56px', color: '#ff7a6b' }).setOrigin(0.5);
+    const c = w.add.container(x, y, [ring, bg, img, arrow]).setDepth(2950).setSize(110, 110).setVisible(false);
+    c.setInteractive({ useHandCursor: true });
+    c.on('pointerdown', onClick);
+    c.on('pointerover', () => sayHover(name));
+    w.tweens.add({ targets: arrow, y: -75, duration: 400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    w.tweens.add({ targets: ring, scale: 1.15, duration: 500, yoyo: true, repeat: -1 });
+    this.signs.set(id, c);
   }
 
   start() {
@@ -147,7 +173,6 @@ export class Outside implements Module {
     kid.setNeed(null);
     kid.cheer();
     sfx.giggle();
-    addStars();
     if (this.w.presentKids.every((k) => k.need !== 'wish')) {
       this.countTimer = this.w.time.delayedCall(5000, () => this.startCount());
     }
@@ -294,7 +319,7 @@ export class Outside implements Module {
     this.step = null;
     this.weatherFx?.remove();
     this.weatherFx = null;
-    addStars(2);
+    addStars(3);
     sfx.cheer();
     prompt(`Jest nas ${w.presentKids.length}! Wszystkie dzieci są. Wracamy do przedszkola.`);
     const s = roomX('szatnia');
@@ -316,6 +341,15 @@ export class Outside implements Module {
   }
 
   update(dt: number) {
+    // Signs show during play time; the wanted toy glows with an arrow
+    const held = this.w.holding;
+    for (const [id, c] of this.signs) {
+      c.setVisible(this.step === 'play');
+      const want = !!held && held.need === 'wish' && held.wish === id;
+      (c.list[0] as Phaser.GameObjects.Arc).setVisible(want);
+      (c.list[3] as Phaser.GameObjects.Text).setVisible(want);
+    }
+
     // Swing physics (simple pendulum look)
     this.swingT += dt * 2.6;
     if (!this.swingKid) this.swingAmp = Math.max(0.03, this.swingAmp - dt * 0.05);

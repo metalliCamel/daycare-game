@@ -120,7 +120,7 @@ export class Playroom implements Module {
         k.cheer();
       });
       sfx.giggle();
-      addStars(2);
+      addStars();
       prompt(say2);
       w.time.delayedCall(6000, () => w.tweens.add({ targets: f.toy, alpha: 0, duration: 500, onComplete: () => f.toy.destroy() }));
       this.fight = null;
@@ -161,7 +161,7 @@ export class Playroom implements Module {
       if (save.drawings.length > 8) save.drawings.shift();
       persist();
       this.renderDrawings();
-      addStars(3);
+      addStars(2);
       prompt('Piękny rysunek! Wisi już na ścianie w sali.');
       after?.(true);
     });

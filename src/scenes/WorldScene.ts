@@ -78,7 +78,7 @@ export class WorldScene extends Phaser.Scene {
     this.teacher.setInteractive(new Phaser.Geom.Rectangle(-50, -190, 100, 170), Phaser.Geom.Rectangle.Contains);
     this.teacher.on('pointerdown', (p: Phaser.Input.Pointer) => {
       // Kids always win over the teacher when both are under the pointer.
-      const kid = this.input.hitTestPointer(p).find((o): o is Kid => o instanceof Kid);
+      const kid = this.input.hitTestPointer(p).find((o): o is Kid => o instanceof Kid && !!o.input?.enabled);
       if (kid) this.clickKid(kid);
       else this.letGo();
     });
@@ -271,7 +271,16 @@ export class WorldScene extends Phaser.Scene {
       if (kid.mode === 'busy' || !kid.present) return;
       this.hold(kid);
       say(kid.need ? kid.needText() : `${kid.def.name}, chodź ze mną!`);
+      this.hintLetGo();
     });
+  }
+
+  private letGoHinted = false;
+  /** The first time, explain how to let go of a child's hand. */
+  private hintLetGo() {
+    if (this.letGoHinted) return;
+    this.letGoHinted = true;
+    this.time.delayedCall(2500, () => prompt('Żeby puścić rączkę dziecka, kliknij panią.'));
   }
 
   private randomNeed() {
@@ -315,7 +324,13 @@ export class WorldScene extends Phaser.Scene {
     this.teacher.nudge(dx, dy, dt);
     this.teacher.step(dt);
 
-    for (const kid of this.kids) kid.update(dt, this.teacher);
+    for (const kid of this.kids) {
+      kid.update(dt, this.teacher);
+      // While holding a child's hand, kids (including that child, who walks
+      // right beside the teacher) don't catch clicks — so the toy, toilet or
+      // hook behind them can be clicked. Click the teacher to let go.
+      if (kid.present && kid.input) kid.input.enabled = !this.holding;
+    }
     for (const m of this.modules) m.update?.(dt);
 
     if (this.carrying) {

@@ -92,7 +92,6 @@ export class Nap implements Module {
         w.tweens.add({ targets: bed.blanket, alpha: 1, duration: 300 });
         sfx.whoosh();
         say('Dobranoc!');
-        addStars();
         if (this.beds.filter((b) => b.kid).every((b) => b.tucked)) {
           this.step = 'light';
           prompt('Wszyscy przykryci! Teraz zgaś światło. Kliknij żarówkę na ścianie.');
@@ -109,7 +108,6 @@ export class Nap implements Module {
         if (n >= 3) {
           kid.setNeed(null);
           this.pats.delete(kid);
-          addStars();
           say('Ciii... śpij słodko.');
         } else say('Ciii...');
       });
@@ -138,7 +136,6 @@ export class Nap implements Module {
     }
     this.step = 'sleep';
     playLullaby();
-    addStars();
     prompt('Dzieci zasypiają... Jeśli ktoś się obudzi, kliknij go trzy razy, żeby pogłaskać.');
     this.zzz = w.time.addEvent({
       delay: 900, loop: true,
@@ -201,7 +198,7 @@ export class Nap implements Module {
       kid.setNeed(null);
       kid.walkTo(bed.x, 800, () => kid.walkTo(sala + 250 + i * 170, 690 + (i % 2) * 100, () => (kid.mode = 'free')));
     });
-    addStars(2);
+    addStars(3);
     w.time.delayedCall(3000, () => w.backToFree(14 * 60));
   }
 }

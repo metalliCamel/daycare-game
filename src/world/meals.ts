@@ -155,7 +155,6 @@ export class Meals implements Module {
         kid.setNeed(null);
         kid.cheer();
       });
-      addStars(this.seated.length);
       w.time.delayedCall(900, () => this.afterMeal());
     });
   }
@@ -198,8 +197,8 @@ export class Meals implements Module {
         sponge.destroy();
         w.tweens.add({ targets: c, alpha: 0, duration: 250, onComplete: () => c.destroy() });
         this.crumbs = this.crumbs.filter((x) => x !== c);
-        addStars();
         if (this.crumbs.length === 0) {
+          addStars(3);
           say('Czysto! Brawo!');
           const next = { Śniadanie: 9 * 60 + 30, Obiad: 12 * 60 + 30, Podwieczorek: 15 * 60 } as Record<string, number>;
           w.backToFree(next[state.meal.name]);

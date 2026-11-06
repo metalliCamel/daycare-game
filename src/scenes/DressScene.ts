@@ -106,7 +106,6 @@ export class DressScene extends Overlay {
     sfx.pop();
     say(name);
     if (this.worn.length === info.wear.length) {
-      addStars();
       sfx.giggle();
       this.time.delayedCall(900, () => {
         this.idx++;

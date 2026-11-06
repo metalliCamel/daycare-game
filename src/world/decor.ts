@@ -9,16 +9,16 @@ export type DecorItem = { id: string; key: EmojiKey; name: string; price: number
 
 /** Things Hania can buy with stars. Each has a fixed spot in a room. */
 export const SHOP: DecorItem[] = [
-  { id: 'plant1', key: 'plant', name: 'Kwiatek', price: 5, room: 'sala', x: 960, y: 650, size: 160 },
-  { id: 'balloon', key: 'balloon', name: 'Balonik', price: 5, room: 'jadalnia', x: 140, y: 420, size: 120, wall: true },
-  { id: 'rainbow', key: 'rainbow', name: 'Tęcza', price: 8, room: 'sypialnia', x: 300, y: 300, size: 200, wall: true },
-  { id: 'train', key: 'train', name: 'Pociąg', price: 10, room: 'sala', x: 1000, y: 860, size: 120 },
-  { id: 'dino', key: 'dino', name: 'Dinozaur', price: 12, room: 'sala', x: 200, y: 860, size: 150 },
-  { id: 'fish', key: 'fish', name: 'Akwarium', price: 15, room: 'szatnia', x: 1450, y: 470, size: 110, wall: true },
-  { id: 'unicorn', key: 'unicorn', name: 'Jednorożec', price: 15, room: 'sypialnia', x: 1500, y: 860, size: 150 },
-  { id: 'piano', key: 'piano', name: 'Pianinko', price: 18, room: 'sala', x: 1500, y: 560, size: 150, wall: true },
-  { id: 'rocket', key: 'rocket', name: 'Rakieta', price: 20, room: 'dwor', x: 1540, y: 700, size: 160 },
-  { id: 'lamp', key: 'lamp', name: 'Lampka', price: 10, room: 'sypialnia', x: 1050, y: 420, size: 100, wall: true },
+  { id: 'plant1', key: 'plant', name: 'Kwiatek', price: 15, room: 'sala', x: 960, y: 650, size: 160 },
+  { id: 'balloon', key: 'balloon', name: 'Balonik', price: 15, room: 'jadalnia', x: 140, y: 420, size: 120, wall: true },
+  { id: 'rainbow', key: 'rainbow', name: 'Tęcza', price: 25, room: 'sypialnia', x: 300, y: 300, size: 200, wall: true },
+  { id: 'train', key: 'train', name: 'Pociąg', price: 30, room: 'sala', x: 1000, y: 860, size: 120 },
+  { id: 'lamp', key: 'lamp', name: 'Lampka', price: 30, room: 'sypialnia', x: 1050, y: 420, size: 100, wall: true },
+  { id: 'dino', key: 'dino', name: 'Dinozaur', price: 40, room: 'sala', x: 200, y: 860, size: 150 },
+  { id: 'fish', key: 'fish', name: 'Akwarium', price: 50, room: 'szatnia', x: 1450, y: 470, size: 110, wall: true },
+  { id: 'unicorn', key: 'unicorn', name: 'Jednorożec', price: 50, room: 'sypialnia', x: 1500, y: 860, size: 150 },
+  { id: 'piano', key: 'piano', name: 'Pianinko', price: 60, room: 'sala', x: 1500, y: 560, size: 150, wall: true },
+  { id: 'rocket', key: 'rocket', name: 'Rakieta', price: 80, room: 'dwor', x: 1540, y: 700, size: 160 },
 ];
 
 export class Decor {

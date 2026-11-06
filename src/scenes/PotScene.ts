@@ -134,7 +134,7 @@ export class PotScene extends Overlay {
   // ---------- Stir ----------
 
   private stir() {
-    addStars();
+    sfx.star();
     // Ingredients are all in — put the bowls away to make room for serving
     this.pantry.forEach((c) => this.tweens.add({ targets: c, alpha: 0, y: c.y + 60, duration: 300, onComplete: () => c.destroy() }));
     prompt('Teraz wymieszaj! Kręć myszką kółka nad ' + (this.dish.vessel === 'pot' ? 'garnkiem.' : 'miską.'));
@@ -188,7 +188,7 @@ export class PotScene extends Overlay {
   // ---------- Serve ----------
 
   private serve() {
-    addStars();
+    sfx.star();
     prompt('Nałóż każdemu dziecku! Kliknij każdą miseczkę.');
     const n = this.kids.length;
     let filled = 0;

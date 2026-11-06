@@ -16,7 +16,7 @@ Vercel detects Vite automatically: build command `npm run build`, output directo
 
 ## How it plays
 
-Hania is the teacher. Click the floor (or use the arrow keys) to walk through the building; the room map in the corner jumps to any room, and a red dot shows where someone needs help. Click a child to take their hand, click again to let go. Hovering over anything reads it aloud.
+Hania is the teacher. Click the floor (or use the arrow keys) to walk through the building; the room map in the corner jumps to any room, and a red dot shows where someone needs help. Click a child to take their hand; click the teacher to let go. While holding a child, other kids don't block clicks on the toys behind them. Hovering over anything reads it aloud.
 
 **A day at the daycare** (the clock only runs during free time, so nothing is ever rushed):
 

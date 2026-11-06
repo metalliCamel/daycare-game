@@ -125,7 +125,7 @@ export class PourScene extends Overlay {
     this.stream.setVisible(false);
     if (this.fill < 0.05) return;
     if (this.fill >= GOOD_MIN && this.fill <= 1) {
-      addStars();
+      sfx.star();
       say(this.fill >= LINE - 0.05 && this.fill <= LINE + 0.1 ? 'Idealnie!' : 'Super!');
       this.nextCup();
     } else if (this.fill < GOOD_MIN) {
@@ -169,7 +169,7 @@ export class PourScene extends Overlay {
           this.input.setDefaultCursor('default');
           puddle.destroy();
           sponge.destroy();
-          addStars();
+          sfx.star();
           say('Czysto! Brawo!');
           this.locked = false;
           this.nextCup();

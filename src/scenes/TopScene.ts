@@ -132,7 +132,7 @@ export class TopScene extends Overlay {
   }
 
   private finishItem() {
-    addStars();
+    sfx.star();
     const item = this.item!;
     this.item = null;
     this.time.delayedCall(700, () => {

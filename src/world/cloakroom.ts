@@ -188,7 +188,6 @@ export class Cloakroom implements Module {
       kid.mode = 'free';
       kid.homeRoom = roomIndexAt(this.s + 300);
       state.present.push(kid.def.id);
-      addStars();
       sfx.giggle();
       prompt(`Dzień dobry! Teraz kliknij ${kid.def.acc}, a potem świecący wieszak z ${kid.adj('jej', 'jego')} buzią.`);
       if (v) this.leave(v, false);
@@ -222,7 +221,6 @@ export class Cloakroom implements Module {
       kid.mode = 'busy';
       const sala = roomX('sala');
       kid.walkTo(sala + Phaser.Math.Between(250, 1100), Phaser.Math.Between(660, 820), () => (kid.mode = 'free'));
-      addStars();
       say(`Kurtka wisi! ${kid.def.name} idzie się bawić.`);
       this.checkDropoffDone();
       return;
@@ -254,7 +252,6 @@ export class Cloakroom implements Module {
     if (!kid.wearing.includes('coat')) return say('Najpierw kurtka z wieszaka!');
     kid.cheer();
     sfx.cheer();
-    addStars();
     say(`Do widzenia, ${kid.def.name}!`);
     this.leave(v, true);
     if (this.phaseMode === 'pickup' && this.queue.length === 0 && this.visits.length === 0) {
@@ -268,6 +265,7 @@ export class Cloakroom implements Module {
     const waiting = this.w.presentKids.some((k) => k.need === 'coat' || k.need === 'check');
     if (waiting) return;
     this.phaseMode = null;
+    addStars(2);
     this.w.backToFree(8 * 60);
     prompt('Wszystkie dzieci są już w przedszkolu! Czas na zabawę. O dziewiątej śniadanie.');
   }
@@ -275,6 +273,7 @@ export class Cloakroom implements Module {
   private endDay() {
     const w = this.w;
     this.phaseMode = null;
+    addStars(3);
     w.setPhase('summary');
     w.openScene<'next'>('Summary', { day: save.day, stars: state.starsToday, total: save.stars }, () => {
       save.day++;
