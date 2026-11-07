@@ -120,14 +120,20 @@ export class Bathroom implements Module {
   private useSink() {
     const w = this.w;
     const kid = w.holding;
-    const brushing = w.presentKids.filter((k) => k.need === 'teeth');
-    if (!kid && brushing.length) {
+    // Teeth: everyone who still needs it, starting with the child she holds by the hand
+    const brushing = w.presentKids.filter((k) => k.need === 'teeth').sort((a, b) => (a === kid ? -1 : b === kid ? 1 : 0));
+    if (brushing.length && kid?.need !== 'wash') {
+      if (kid) w.letGo();
       w.openScene<boolean>('Teeth', { kids: brushing.map((k) => k.def.id) }, (ok) => {
         if (!ok) return;
-        brushing.forEach((k) => k.setNeed(null));
+        brushing.forEach((k) => {
+          k.setNeed(null);
+          befriend(k);
+        });
         stat('teeth');
         addStars();
-        prompt('Wszystkie ząbki czyste i błyszczące!');
+        const left = w.presentKids.filter((k) => k.need === 'teeth').length;
+        prompt(left ? `Czyste! Jeszcze ${left === 1 ? 'jedno dziecko czeka' : 'kilkoro dzieci czeka'} na mycie ząbków.` : 'Wszystkie ząbki czyste i błyszczące!');
       });
       return;
     }
