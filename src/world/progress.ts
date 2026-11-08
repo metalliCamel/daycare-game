@@ -46,7 +46,7 @@ export type DayEvent =
   | { kind: 'trip' }
   | { kind: 'holiday'; id: 'mikolajki' | 'wigilia' | 'babcia' | 'wielkanoc' | 'mama' };
 
-const NEW_KIDS: Record<number, string> = { 5: 'lena', 8: 'tymek' };
+const NEW_KIDS: Record<number, string> = { 5: 'lena', 9: 'tymek' };
 
 export function todaysEvent(): DayEvent {
   const lvl = save.level;
